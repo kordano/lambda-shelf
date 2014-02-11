@@ -1,21 +1,21 @@
 # lambda-shelf
 
-Basic collection prototype.
+A basic stuff collector using David Nolens React interface [https://github.com/swannodette/om](om "https://github.com/swannodette/om").
 
 ## Usage
 
-Build it
+Build clojurescript file
 
 ```
 lein cljsbuild once
 ```
 
-Run it
+Start backend servers
 ```
 lein run
 ```
 
-Try it: [localhost:8080](http://localhost:8080 "Lambda Shelf")
+Visit [localhost:8080](http://localhost:8080 "Lambda Shelf")
 
 ## License
 
