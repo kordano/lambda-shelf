@@ -12,9 +12,10 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2156"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
+                 [org.clojure/java.jdbc "0.3.3"]
+                 [postgresql "9.1-901.jdbc4"]
                  [ring "1.2.1"]
                  [enlive "1.1.5"]
-                 [http-kit "2.1.16"]
                  [compojure "1.1.6"]
                  [om "0.3.6"]
                  [com.facebook/react "0.8.0.1"]
@@ -25,6 +26,8 @@
             [lein-ancient "0.5.4"]]
 
   :repl-options {:init-ns lambda-shelf.core}
+
+  :main lambda-shelf.core
 
   :cljsbuild
   {:builds
