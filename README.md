@@ -1,6 +1,6 @@
 # lambda-shelf
 
-A basic stuff collector using David Nolens React interface [https://github.com/swannodette/om](om "om").
+A basic stuff collector using David Nolens React interface [om](https://github.com/swannodette/om "om").
 
 ## Usage
 
