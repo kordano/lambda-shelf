@@ -15,9 +15,9 @@
 
 
 (def app-state (atom {:bookmarks
-                      [{:title "the master himself" :url "https://github.com/kordano"}
-                       {:title "nomads blog" :url "http://functional-nomads.github.io"}
-                       {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}]}))
+                      [{:title "the master himself" :url "https://github.com/kordano" :date (new js/Date)}
+                       {:title "nomads blog" :url "http://functional-nomads.github.io" :date (new js/Date)}
+                       {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS" :date (new js/Date)}]}))
 
 
 (defn handle-url-change [e owner {:keys [url-text]}]
@@ -29,18 +29,18 @@
 (defn add-bookmark [app owner]
   (let [new-title (.-value (om/get-node owner "new-title"))
         new-url (.-value (om/get-node owner "new-url"))]
-    (om/transact! app :bookmarks conj {:title new-title :url new-url})
+    (om/transact! app :bookmarks conj {:title new-title :url new-url :date (new js/Date)})
     (om/set-state! owner :url-text "")
     (om/set-state! owner :title-text "")))
 
 
-(defn bookmark-view [{:keys [title url] :as bookmark} owner]
+(defn bookmark-view [{:keys [title url date] :as bookmark} owner]
   (reify
     om/IRenderState
     (render-state [this {:keys [delete]}]
       (dom/li nil
               (dom/span nil (dom/a #js {:href url} title))
-              (dom/button #js {:onClick (fn [e] (put! delete @bookmark))} "Delete")))))
+              (dom/button #js {:onClick (fn [e] (put! delete @bookmark)) :className "remove-button"} "X")))))
 
 
 (defn bookmarks-view [app owner]
@@ -62,15 +62,15 @@
     (render-state [this state]
       (dom/div nil
                (dom/h2 nil "Bookmarks")
-               (dom/div nil
-                        (dom/span nil "URL"
+               (apply dom/ul nil
+                      (om/build-all bookmark-view (:bookmarks app) {:init-state {:delete (:delete state)}}))
+               (dom/div #js {:className "input-div"}
+                        (dom/span nil "URL:"
                                   (dom/input #js {:type "text" :ref "new-url" :value (:url-text state) :onChange #(handle-url-change % owner state)}))
-                        (dom/span nil "TITLE"
+                        (dom/span nil "Title:"
                                   (dom/input #js {:type "text" :ref "new-title" :value (:title-text state) :onChange #(handle-title-change % owner state)}))
 
-                        (dom/button #js {:onClick #(add-bookmark app owner)} "Add bookmark"))
-               (apply dom/ul nil
-                      (om/build-all bookmark-view (:bookmarks app) {:init-state {:delete (:delete state)}}))))))
+                        (dom/button #js {:onClick #(add-bookmark app owner) :className "add-button"} "ADD"))))))
 
 
 (om/root
