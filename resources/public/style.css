@@ -1,0 +1,81 @@
+body {
+    background-color: #202035;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-family : "Open Sans";
+    font-size: 14px;
+    color: #7070aa;
+    width: 100%;
+    height: 100%;
+}
+
+/* links */
+a:link {color:#7070aa;}      /* unvisited link */
+a:visited {color:#ab7070;}  /* visited link */
+a:hover {color:#50afde;}  /* mouse over link */
+
+/* input fields*/
+input {
+    background: #353560;
+    color: #9090EE;
+    border: 0;
+    font-size: 100%;
+    border-radius: 3px;
+    border: 1px solid #7070AA;
+    text-align: center;
+    margin-left: 5px;
+    margin-right: 15px;
+    width: 25%;
+}
+
+input:focus {
+    background: #404075;
+}
+
+.input-div {
+    margin-left: 15px;
+}
+
+.add-button {
+    background-color:#202035;
+    -moz-border-radius:3px;
+    -webkit-border-radius:3px;
+    border-radius:3px;
+    border:1px solid #7070aa;
+    display:inline-block;
+    cursor:pointer;
+    color:#7070aa;
+    font-size: 100%;
+    padding:6px 20px;
+}
+.add-button:hover {
+    background-color:#202035;
+    color: #50afde;
+    border-color: #50afde;
+}
+.add-button:active {
+    position:relative;
+    top:1px;
+}
+
+.remove-button {
+    background-color:#202035;
+    -moz-border-radius:3px;
+    -webkit-border-radius:3px;
+    border-radius:3px;
+    border:1px solid #7070aa;
+    display:inline-block;
+    cursor:pointer;
+    color:#7070aa;
+    margin-left: 15px;
+}
+.remove-button:hover {
+    background-color:#202035;
+    color: #50afde;
+    border-color: #50afde;
+}
+.remove-button:active {
+    position:relative;
+    top:1px;
+}
