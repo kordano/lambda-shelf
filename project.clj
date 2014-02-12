@@ -7,6 +7,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
+  :min-lein-version "2.0.0"
+
   :source-paths ["src/cljs" "src/clj"]
 
   :dependencies [[org.clojure/clojure "1.5.1"]
@@ -17,7 +19,6 @@
                  [ring "1.2.1"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
-                 [clj-time "0.6.0"]
                  [om "0.3.6"]
                  [com.facebook/react "0.8.0.1"]
                  [hiccups "0.3.0"]]
@@ -29,6 +30,10 @@
   :repl-options {:init-ns lambda-shelf.core}
 
   :main lambda-shelf.core
+
+  :uberjar-name "lambda-shelf-standalone.jar"
+
+  :hooks [leiningen.cljsbuild]
 
   :cljsbuild
   {:builds
