@@ -1,5 +1,6 @@
 (ns lambda-shelf.database
   (:require [clojure.java.jdbc :as sql]
+            [clojure.data :refer [diff]]
             [clj-time.local :refer [local-now]]
             [clj-time.coerce :refer [to-timestamp]]))
 
@@ -46,4 +47,8 @@
                 {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}])
 
 #_(doall (map insert-bookmark test-data))
-#_(get-all-bookmarks)
+
+(let [a [1 2 3]
+      b [1 2 3 4 5]
+      c (into #{} a)]
+  (into a (remove c b)))
