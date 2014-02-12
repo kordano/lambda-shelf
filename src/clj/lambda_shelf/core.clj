@@ -4,7 +4,8 @@
             [compojure.route :refer (resources)]
             [compojure.core :refer (GET defroutes)]
             [ring.adapter.jetty :refer [run-jetty]]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [lambda-shelf.database :refer [get-all-bookmarks]]))
 
                                         ; ring server, only for production
 (enlive/deftemplate page
@@ -15,6 +16,9 @@
 
 (defroutes site
   (resources "/")
+  (GET "/init" [] {:status 200
+                   :headers {"Content-Type" "application/edn"}
+                   :body (str (get-all-bookmarks))})
   (GET "/*" req (page)))
 
 #_(defonce server
