@@ -3,7 +3,8 @@
             [clojure.browser.repl]
             [cljs.core.async :refer [put! chan <!]]
             [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true])
+            [om.dom :as dom :include-macros true]
+            [lambda-shelf.communicator :refer [post-edn get-edn]])
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
 
@@ -14,11 +15,9 @@
     (cemerick.austin.repls/cljs-repl repl-env))
 
 
-(def app-state (atom {:bookmarks
-                      [{:title "the master himself" :url "https://github.com/kordano" :date (new js/Date)}
-                       {:title "nomads blog" :url "http://functional-nomads.github.io" :date (new js/Date)}
-                       {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS" :date (new js/Date)}]}))
+(def app-state (atom {:bookmarks nil}))
 
+#_[{:title "the master himself" :url "https://github.com/kordano" :date (new js/Date)} {:title "nomads blog" :url "http://functional-nomads.github.io" :date (new js/Date)} {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS" :date (new js/Date)}]
 
 (defn handle-url-change [e owner {:keys [url-text]}]
   (om/set-state! owner :url-text (.. e -target -value)))
@@ -72,6 +71,10 @@
 
                         (dom/button #js {:onClick #(add-bookmark app owner) :className "add-button"} "ADD"))))))
 
+;; set initial state
+(go
+  (let [init-data (<! (get-edn "init"))]
+    (swap! app-state assoc :bookmarks init-data)))
 
 (om/root
   app-state
