@@ -2,10 +2,10 @@
   (:require [cemerick.austin.repls :refer (browser-connected-repl-js)]
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer (resources)]
-            [compojure.core :refer (GET defroutes)]
+            [compojure.core :refer (GET POST defroutes)]
             [ring.adapter.jetty :refer [run-jetty]]
             [clojure.java.io :as io]
-            [lambda-shelf.database :refer [get-all-bookmarks]]))
+            [lambda-shelf.database :refer [get-all-bookmarks insert-bookmark]]))
 
                                         ; ring server, only for production
 (enlive/deftemplate page
@@ -16,9 +16,14 @@
 
 (defroutes site
   (resources "/")
-  (GET "/init" [] {:status 200
+  (GET "/bookmark/init" [] {:status 200
                    :headers {"Content-Type" "application/edn"}
                    :body (str (get-all-bookmarks))})
+  (POST "/bookmark/add" request (let [data (-> request :body slurp read-string)
+                               resp (insert-bookmark data)]
+                           {:status 200
+                            :headers {"Content-Type" "application/edn"}
+                            :body (str (get-all-bookmarks))}))
   (GET "/*" req (page)))
 
 #_(defonce server
