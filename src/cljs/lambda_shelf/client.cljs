@@ -22,8 +22,10 @@
 (defn handle-url-change [e owner {:keys [url-text]}]
   (om/set-state! owner :url-text (.. e -target -value)))
 
+
 (defn handle-title-change [e owner {:keys [title-text]}]
   (om/set-state! owner :title-text (.. e -target -value)))
+
 
 (defn add-bookmark [app owner]
   (let [new-title (.-value (om/get-node owner "new-title"))
@@ -38,7 +40,7 @@
          :bookmarks
          (fn [bms]
            (let [bms-set (into #{} bms)]
-             (into bms (remove bms-set database-bms)))))
+             (into [] (sort-by :date > (into bms (remove bms-set database-bms)))))))
         (om/set-state! owner :url-text "")
         (om/set-state! owner :title-text "")))))
 
@@ -47,8 +49,9 @@
   (reify
     om/IRenderState
     (render-state [this {:keys [delete]}]
-      (dom/li nil
-              (dom/span nil (dom/a #js {:href url} title))
+      (dom/tr nil
+              (dom/td #js {:className "bookmark-date"} (dom/span nil (.toLocaleString date)))
+              (dom/td #js {:className "bookmark-title"} (dom/a #js {:href url} title))
               ;;(dom/button #js {:onClick (fn [e] (put! delete @bookmark)) :className "remove-button"} "X")
               ))))
 
@@ -70,22 +73,33 @@
                 (recur))))))
     om/IRenderState
     (render-state [this state]
-      (dom/div nil
-               (dom/h2 nil "Bookmarks")
-               (apply dom/ul nil
-                      (om/build-all bookmark-view (:bookmarks app) {:init-state {:delete (:delete state)}}))
-               (dom/div #js {:className "input-div"}
-                        (dom/span nil "URL:"
-                                  (dom/input #js {:type "text" :ref "new-url" :value (:url-text state) :onChange #(handle-url-change % owner state)}))
-                        (dom/span nil "Title:"
-                                  (dom/input #js {:type "text" :ref "new-title" :value (:title-text state) :onChange #(handle-title-change % owner state)}))
+      (dom/div #js {:id "bookmarks-container"}
+               (dom/div #js {:className "container-input"}
+                        (dom/span nil
+                                  (dom/input #js {:type "text"
+                                                  :ref "new-url"
+                                                  :value (:url-text state)
+                                                  :placeholder "URL"
+                                                  :onChange #(handle-url-change % owner state)}))
+                        (dom/span nil
+                                  (dom/input #js {:type "text"
+                                                  :ref "new-title"
+                                                  :value (:title-text state)
+                                                  :placeholder "Title"
+                                                  :onChange #(handle-title-change % owner state)}))
+                        (dom/button #js {:onClick #(add-bookmark app owner)
+                                         :className "add-button"} "ADD"))
+               (dom/h2 #js {:className "container-header"} "Bookmarks")
+               (dom/div #js {:className "container-list"}
+                        (apply dom/table nil
+                               (om/build-all bookmark-view (:bookmarks app))))))))
 
-                        (dom/button #js {:onClick #(add-bookmark app owner) :className "add-button"} "ADD"))))))
 
 ;; set initial state
 (go
   (let [init-data (<! (get-edn "bookmark/init"))]
-    (swap! app-state assoc :bookmarks (into [] (sort-by :date init-data)))))
+    (swap! app-state assoc :bookmarks (into [] (sort-by :date > init-data)))))
+
 
 (om/root
   app-state
