@@ -38,3 +38,8 @@
   (database/migrate)
   (let [port (Integer. (or (System/getenv "PORT") "8080"))]
     (start port)))
+
+;; --- TESTING ---
+#_(defonce server (start 8080))
+#_(.stop server)
+#_(.start server)
