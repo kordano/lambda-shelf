@@ -1,54 +1,57 @@
 (ns lambda-shelf.database
-  (:require [clojure.java.jdbc :as sql]
-            [clojure.data :refer [diff]]
-            [clj-time.local :refer [local-now]]
-            [clj-time.coerce :refer [to-timestamp]]))
+  (:require [clojure.java.jdbc :as sql]))
 
 
-(def heroku-db
-  {:subprotocol "postgresql"
-   :subname "df2mf9sv02i5a4"
-   :user "buztdsjsyaokvj"
-   :password "78PodlHiv1dnLGFtTigFGsTPn7"})
+(def spec
+  (or (System/getenv "HEROKU_POSTGRESQL_BRONZE_URL")
+      {:subprotocol "postgresql"
+       :subname "the_shelf"
+       :user "eve"
+       :password "pg12"}))
 
-(def local-db
-  {:subprotocol "postgresql"
-   :subname "the_shelf"
-   :user "eve"
-   :password "pg12"})
 
 (defn create-bookmark-table []
   (sql/db-do-commands
-    local-db
+   spec
     (sql/create-table-ddl
      :bookmark
+     [:id :serial "PRIMARY KEY"]
      [:title :text]
      [:url :text]
-     [:date :timestamp])))
+     [:date :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
+
+
+(defn migrated? []
+  (-> (sql/query spec
+                 [(str "select count(*) from information_schema.tables "
+                       "where table_name='bookmark'")])
+      first :count pos?))
+
+
+(defn migrate []
+  (when (not (migrated?))
+    (print "Creating database structure...") (flush)
+    (create-bookmark-table)
+    (println " done")))
 
 
 (defn insert-bookmark [{:keys [title url]}]
   (sql/insert!
-   local-db
+   spec
    :bookmark
-   [:title :url :date]
-   [title url (to-timestamp (local-now))]))
+   [:title :url]
+   [title url]))
 
 
 (defn get-all-bookmarks []
-  (vec (sql/query local-db ["SELECT * FROM bookmark"])))
+  (vec (sql/query spec ["SELECT * FROM bookmark"])))
 
 
 ;; --- TESTING N STUFF ---
 #_(create-bookmark-table)
-#_(sql/db-do-commands local-db (sql/drop-table-ddl :bookmark))
+#_(sql/db-do-commands spec (sql/drop-table-ddl :bookmark))
 #_(def test-data [{:title "the master himself" :url "https://github.com/kordano" }
                 {:title "nomads blog" :url "http://functional-nomads.github.io"}
                 {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}])
 
 #_(doall (map insert-bookmark test-data))
-
-(let [a [1 2 3]
-      b [1 2 3 4 5]
-      c (into #{} a)]
-  (into a (remove c b)))
