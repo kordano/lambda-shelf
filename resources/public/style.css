@@ -1,5 +1,5 @@
 body {
-    background-color: #202035;
+    background-color: #101025;
     margin: 0;
     padding: 0;
     border: 0;
@@ -18,27 +18,22 @@ a:hover {color:#50afde;}  /* mouse over link */
 /* input fields*/
 input {
     background: #353560;
-    color: #9090EE;
+    color: #50afde;
     border: 0;
     font-size: 100%;
     border-radius: 3px;
     border: 1px solid #7070AA;
     text-align: center;
-    margin-left: 5px;
-    margin-right: 15px;
-    width: 25%;
+    width: 100%;
+    margin-bottom: 5px;
+    margin-top: 5px;
 }
 
 input:focus {
     background: #404075;
 }
-
-.input-div {
-    margin-left: 15px;
-}
-
 .add-button {
-    background-color:#202035;
+    background-color:#101025;
     -moz-border-radius:3px;
     -webkit-border-radius:3px;
     border-radius:3px;
@@ -47,10 +42,13 @@ input:focus {
     cursor:pointer;
     color:#7070aa;
     font-size: 100%;
-    padding:6px 20px;
+    font-style: bold;
+    padding:1px 20px;
+    width: 30%;
+    margin: 5% 35%;
 }
 .add-button:hover {
-    background-color:#202035;
+    background-color:#101025;
     color: #50afde;
     border-color: #50afde;
 }
@@ -60,7 +58,7 @@ input:focus {
 }
 
 .remove-button {
-    background-color:#202035;
+    background-color:#101025;
     -moz-border-radius:3px;
     -webkit-border-radius:3px;
     border-radius:3px;
@@ -71,11 +69,68 @@ input:focus {
     margin-left: 15px;
 }
 .remove-button:hover {
-    background-color:#202035;
+    background-color:#101025;
     color: #50afde;
     border-color: #50afde;
 }
 .remove-button:active {
     position:relative;
     top:1px;
+}
+
+/* bookmarks specific */
+#bookmarks-container {
+    margin: 5% 15%;
+}
+
+.bookmark-title {
+    font-size: 22px;
+}
+
+.bookmark-date {
+    font-size: 12px;
+    font-style: italic;
+}
+
+
+/* generic container */
+
+.container-header {
+    font-size: 32px;
+    font-style: italic;
+    border-bottom: 1px solid #50afde;
+    color: #50afde;
+}
+
+.container-list {
+    width: 100%;
+}
+
+.container-list td {
+    padding: 5px 15px;
+}
+
+.container-input {
+    font-size: 22px;
+    margin: 5px 15%;
+    padding: 0;
+}
+
+.container-input span {
+    width: 100%;
+}
+
+
+/* all */
+::-webkit-input-placeholder {
+    color:#9090ee;
+}
+::-moz-placeholder { /* firefox 19+ */
+    color:#9090ee;
+}
+:-ms-input-placeholder { /* ie */
+    color:#9090ee;
+}
+input:-moz-placeholder {
+    color:#9090ee;
 }
