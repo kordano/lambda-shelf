@@ -1,16 +1,14 @@
 # lambda-shelf
 
-A basic stuff collector using David Nolens React interface [om](https://github.com/swannodette/om "om").
+A basic stuff collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, ring for backend server and postgresql as backend storage.
 
 ## Usage
 
-Build clojurescript file
+A [postgresql](http://www.postgresql.org/download/ "postgresql installation") instance is required.
 
-```
-lein cljsbuild once
-```
+Adjust database credentials in [database.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/database.clj "database file"). Refer to [clojure.java.jdbc](https://github.com/clojure/java.jdbc "jdbc") for configuration.
 
-Start backend servers
+Compile and start server via
 ```
 lein run
 ```
