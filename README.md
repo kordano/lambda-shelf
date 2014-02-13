@@ -8,7 +8,12 @@ A [postgresql](http://www.postgresql.org/download/ "postgresql installation") in
 
 Adjust database credentials in [database.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/database.clj "database file"). Refer to [clojure.java.jdbc](https://github.com/clojure/java.jdbc "jdbc") for configuration.
 
-Compile and start server via
+Compile Clojurescript
+```
+lein cljsbuild once
+```
+
+Start server
 ```
 lein run
 ```

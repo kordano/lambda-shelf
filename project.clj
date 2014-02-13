@@ -33,7 +33,7 @@
 
   :uberjar-name "lambda-shelf-standalone.jar"
 
-  :hooks [leiningen.cljsbuild]
+  ;;:hooks [leiningen.cljsbuild]
 
   :cljsbuild
   {:builds
