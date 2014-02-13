@@ -2,6 +2,8 @@
 
 A basic stuff collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, ring for backend server and postgresql as backend storage.
 
+Enjoy live application on [heroku](https://stark-lake-6076.herokuapp.com/ "Lambda Shelf"")
+
 ## Usage
 
 A [postgresql](http://www.postgresql.org/download/ "postgresql installation") instance is required.
