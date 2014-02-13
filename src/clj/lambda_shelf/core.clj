@@ -1,11 +1,13 @@
 (ns lambda-shelf.core
+  (:gen-class :main true)
   (:require [cemerick.austin.repls :refer (browser-connected-repl-js)]
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer (resources)]
             [compojure.core :refer (GET POST defroutes)]
             [ring.adapter.jetty :refer [run-jetty]]
             [clojure.java.io :as io]
-            [lambda-shelf.database :refer [get-all-bookmarks insert-bookmark]]))
+            [lambda-shelf.database :as database]))
+
 
                                         ; ring server, only for production
 (enlive/deftemplate page
@@ -14,24 +16,25 @@
   [:body] (enlive/append
             (enlive/html [:script (browser-connected-repl-js)])))
 
+
 (defroutes site
   (resources "/")
   (GET "/bookmark/init" [] {:status 200
                    :headers {"Content-Type" "application/edn"}
-                   :body (str (get-all-bookmarks))})
+                   :body (str (database/get-all-bookmarks))})
   (POST "/bookmark/add" request (let [data (-> request :body slurp read-string)
-                               resp (insert-bookmark data)]
+                               resp (database/insert-bookmark data)]
                            {:status 200
                             :headers {"Content-Type" "application/edn"}
-                            :body (str (get-all-bookmarks))}))
+                            :body (str (database/get-all-bookmarks))}))
   (GET "/*" req (page)))
 
-#_(defonce server
-    (run-jetty #'site {:port 8080 :join? false}))
 
-(defn -main
-  [& args]
-  (run-jetty #'site {:port 8080 :join? false}))
+(defn start [port]
+  (run-jetty #'site {:port port :join? false}))
 
-#_(.stop server)
-#_(.start server)
+
+(defn -main []
+  (database/migrate)
+  (let [port (Integer. (or (System/getenv "PORT") "8080"))]
+    (start port)))
