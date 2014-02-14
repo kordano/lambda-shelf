@@ -2,7 +2,7 @@
 
 A basic stuff collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, ring for backend server and postgresql as backend storage.
 
-Enjoy live application on [heroku](https://stark-lake-6076.herokuapp.com/ "Lambda Shelf"")
+Enjoy live application on [heroku](https://stark-lake-6076.herokuapp.com/ "Lambda Shelf").
 
 ## Usage
 
@@ -20,7 +20,7 @@ Start server
 lein run
 ```
 
-Visit [localhost:8080](http://localhost:8080 "Lambda Shelf")
+Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
 
 ## License
 

@@ -4,7 +4,6 @@
             [cljs.core.async :refer [put! chan <!]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
-            [clojure.data :refer [diff]]
             [lambda-shelf.communicator :refer [post-edn get-edn]])
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
@@ -31,16 +30,24 @@
   (let [new-title (.-value (om/get-node owner "new-title"))
         new-url (.-value (om/get-node owner "new-url"))]
     (go
-      (let [database-bms (<!
+      (let [db-bookmarks (<!
                            (post-edn
                             "bookmark/add"
                             (str {:title new-title :url new-url})))]
         (om/transact!
          app
          :bookmarks
-         (fn [bms]
-           (let [bms-set (into #{} bms)]
-             (into [] (sort-by :date > (into bms (remove bms-set database-bms)))))))
+         (fn [bookmarks]
+           (let [ids (into #{} (map :id bookmarks))
+                 new-list (into []
+                   (sort-by :date >
+                            (into bookmarks
+                                  (remove
+                                   #(contains? ids (% :id))
+                                   db-bookmarks))))]
+             (.log js/console (str new-list))
+             new-list
+             )))
         (om/set-state! owner :url-text "")
         (om/set-state! owner :title-text "")))))
 
