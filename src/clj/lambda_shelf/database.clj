@@ -18,6 +18,7 @@
      [:id :serial "PRIMARY KEY"]
      [:title :text]
      [:url :text]
+     [:votes :int "NOT NULL" "DEFAULT 0"]
      [:date :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
 
 
@@ -41,6 +42,17 @@
    :bookmark
    [:title :url]
    [title url]))
+
+
+(defn vote-bookmark [{:keys [id upvote]}]
+  (let [current-votes (-> (sql/query spec [(str "select votes from bookmark where id=" id)])
+                          first
+                          :votes)]
+    (sql/update!
+     spec
+     :bookmark
+     {:votes (if upvote (inc current-votes) (dec current-votes))}
+     ["id=?" id])))
 
 
 (defn get-all-bookmarks []
