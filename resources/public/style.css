@@ -74,18 +74,30 @@ input:focus {
 /* generic container */
 
 .container-header {
-    font-size: 32px;
-    font-style: italic;
     border-bottom: 1px solid #50afde;
     color: #50afde;
 }
+
+.container-header a {
+    font-size: 32px;
+    font-style: italic;
+}
+
 
 .container-list {
     width: 100%;
 }
 
+.container-list table {
+    border-collapse: collapse;
+}
+
 .container-list td {
     padding: 5px 15px;
+}
+
+.container-list tr:hover {
+    background: #161633;
 }
 
 .container-input {

@@ -14,10 +14,12 @@ Compile Clojurescript
 ```
 lein cljsbuild once
 ```
+
 Start server
 ```
 lein run
 ```
+
 Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
 
 ## License

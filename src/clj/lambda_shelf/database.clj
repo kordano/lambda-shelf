@@ -82,11 +82,11 @@
 
 
 ;; --- TESTING N STUFF ---
-#_(create-bookmark-table)
 #_(sql/db-do-commands spec (sql/drop-table-ddl :bookmark))
 #_(def test-data [{:title "the master himself" :url "https://github.com/kordano" }
                 {:title "nomads blog" :url "http://functional-nomads.github.io"}
                 {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}])
 
+#_(migrate)
 #_(doall (map insert-bookmark test-data))
 #_(upgrade)

@@ -19,6 +19,7 @@
 
 (defroutes site
   (resources "/")
+
   (GET "/bookmark/init" []
        {:status 200
         :headers {"Content-Type" "application/edn"}
