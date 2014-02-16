@@ -10,11 +10,6 @@ body {
     height: 100%;
 }
 
-/* links */
-a:link {color:#7070aa;}      /* unvisited link */
-a:visited {color:#ab7070;}  /* visited link */
-a:hover {color:#50afde;}  /* mouse over link */
-
 /* input fields*/
 input {
     background: #353560;
@@ -57,27 +52,6 @@ input:focus {
     top:1px;
 }
 
-.remove-button {
-    background-color:#101025;
-    -moz-border-radius:3px;
-    -webkit-border-radius:3px;
-    border-radius:3px;
-    border:1px solid #7070aa;
-    display:inline-block;
-    cursor:pointer;
-    color:#7070aa;
-    margin-left: 15px;
-}
-.remove-button:hover {
-    background-color:#101025;
-    color: #50afde;
-    border-color: #50afde;
-}
-.remove-button:active {
-    position:relative;
-    top:1px;
-}
-
 /* bookmarks specific */
 #bookmark-container {
     margin: 5% 15%;
@@ -86,6 +60,10 @@ input:focus {
 .bookmark-title {
     font-size: 22px;
 }
+
+.bookmark-title a:link {color:#7070aa;}      /* unvisited link */
+.bookmark-title a:visited {color:#ab7070;}  /* visited link */
+.bookmark-title a:hover {color:#50afde;}  /* mouse over link */
 
 .bookmark-date {
     font-size: 12px;
