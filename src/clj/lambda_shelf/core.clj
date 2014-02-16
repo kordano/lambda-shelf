@@ -47,6 +47,7 @@
 
 (defn -main []
   (database/migrate)
+  (database/upgrade)
   (let [port (Integer. (or (System/getenv "PORT") "8080"))]
     (start port)))
 
