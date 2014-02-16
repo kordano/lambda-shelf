@@ -44,15 +44,13 @@
                             (str {:title new-title :url new-url})))]
         (om/transact! app :bookmarks
          (fn [bookmarks]
-           (let [ids (into #{} (map :id bookmarks))
-                 new-list (into []
+           (let [ids (into #{} (map :id bookmarks))]
+             (into []
                    (sort-by :date >
                             (into bookmarks
                                   (remove
                                    #(contains? ids (% :id))
-                                   db-bookmarks))))]
-             (.log js/console (str new-list))
-             new-list)))
+                                   db-bookmarks)))))))
         (om/set-state! owner :url-text "")
         (om/set-state! owner :title-text "")))))
 
@@ -63,13 +61,22 @@
     (render-state [this {:keys [upvote downvote]}]
       (dom/tr nil
               (dom/td nil
-                      (dom/div #js {:onClick (fn [e] (do
-                                                      (post-edn "bookmark/vote" (str {:id id :upvote true}))
-                                                      (put! upvote @bookmark))) :className "arrow up"})
+                      (dom/div
+                       #js {:onClick
+                            (fn [e]
+                              (do
+                                (post-edn "bookmark/vote" (str {:id id :upvote true}))
+                                (put! upvote @bookmark))) :className "arrow up"})
+
                       (dom/br nil)
-                      (dom/div #js  {:onClick (fn [e] (do
-                                                       (post-edn "bookmark/vote" (str {:id id :upvote false}))
-                                                       (put! downvote @bookmark))) :className "arrow down"}))
+
+                      (dom/div
+                       #js {:onClick
+                            (fn [e]
+                              (do
+                                (post-edn "bookmark/vote" (str {:id id :upvote false}))
+                                (put! downvote @bookmark))) :className "arrow down"}))
+
               (dom/td #js {:className "bookmark-voting"} (dom/a nil votes))
               (dom/td #js {:className "bookmark-title"} (dom/a #js {:href url} title))
               (dom/td #js {:className "bookmark-date"} (dom/a nil (.toLocaleString date)))))))
@@ -81,6 +88,7 @@
     (init-state [_]
       {:upvote (chan)
        :downvote (chan)
+       :incoming (chan)
        :url-text ""
        :title-text ""})
     om/IWillMount
@@ -97,7 +105,7 @@
                         (apply-to-entry bookmark :votes dec)))
               (recur))))))
     om/IRenderState
-    (render-state [this {:keys [upvote downvote] :as state}]
+    (render-state [this {:keys [upvote downvote incoming] :as state}]
       (dom/div #js {:id "bookmark-container"}
                (dom/div #js {:className "container-input"}
                         (dom/span nil
@@ -111,14 +119,17 @@
                                                   :ref "new-title"
                                                   :value (:title-text state)
                                                   :placeholder "Title"
-                                                  :onChange #(handle-title-change % owner state)}))
+                                                  :onChange #(handle-title-change % owner state)
+                                                  :onKeyPress #(when (== (.-keyCode %) 13)
+                                                                 (add-bookmark app owner))}))
                         (dom/button #js {:onClick #(add-bookmark app owner)
                                          :className "add-button"} "ADD"))
-               (dom/h2 #js {:className "container-header"} "Bookmarks")
+               (dom/div #js {:className "container-header"}
+                        (dom/a nil "Bookmarks"))
                (dom/div #js {:className "container-list"}
                         (apply dom/table nil
                                (om/build-all bookmark-view (:bookmarks app)
-                                             {:init-state {:upvote upvote :downvote downvote}})))))))
+                                             {:init-state {:upvote upvote :downvote downvote :incoming incoming}})))))))
 
 
 ;; set initial state
