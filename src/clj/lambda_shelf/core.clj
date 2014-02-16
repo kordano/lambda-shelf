@@ -14,19 +14,30 @@
   (io/resource "public/index.html")
   []
   [:body] (enlive/append
-            (enlive/html [:script (browser-connected-repl-js)])))
+           (enlive/html [:script (browser-connected-repl-js)])))
 
 
 (defroutes site
   (resources "/")
-  (GET "/bookmark/init" [] {:status 200
-                   :headers {"Content-Type" "application/edn"}
-                   :body (str (database/get-all-bookmarks))})
-  (POST "/bookmark/add" request (let [data (-> request :body slurp read-string)
-                               resp (database/insert-bookmark data)]
-                           {:status 200
-                            :headers {"Content-Type" "application/edn"}
-                            :body (str (database/get-all-bookmarks))}))
+  (GET "/bookmark/init" []
+       {:status 200
+        :headers {"Content-Type" "application/edn"}
+        :body (str (database/get-all-bookmarks))})
+
+  (POST "/bookmark/add" request
+        (let [data (-> request :body slurp read-string)
+              resp (database/insert-bookmark data)]
+          {:status 200
+           :headers {"Content-Type" "application/edn"}
+           :body (str (database/get-all-bookmarks))}))
+
+  (POST "/bookmark/vote" request
+        (let [data (-> request :body slurp read-string)
+              resp (database/vote-bookmark data)]
+          {:status 200
+           :headers {"Content-Type" "application/edn"}
+           :body (str (database/get-all-bookmarks))}))
+
   (GET "/*" req (page)))
 
 
