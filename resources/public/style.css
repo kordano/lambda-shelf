@@ -79,7 +79,7 @@ input:focus {
 }
 
 /* bookmarks specific */
-#bookmarks-container {
+#bookmark-container {
     margin: 5% 15%;
 }
 
@@ -121,6 +121,7 @@ input:focus {
 }
 
 
+
 /* all */
 ::-webkit-input-placeholder {
     color:#9090ee;
@@ -133,4 +134,27 @@ input:focus {
 }
 input:-moz-placeholder {
     color:#9090ee;
+}
+
+
+.arrow {
+   height: 0;
+   width: 0;
+   border: 6px solid transparent;
+}
+
+.arrow.up {
+   border-bottom-color: #7070aa;
+}
+.arrow.up:hover {
+   border-bottom-color: #50afde;
+   cursor: pointer;
+}
+
+.arrow.down {
+   border-top-color: #7070aa;
+}
+.arrow.down:hover {
+   border-top-color: #50afde;
+   cursor: pointer;
 }
