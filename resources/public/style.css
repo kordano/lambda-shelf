@@ -68,6 +68,7 @@ input:focus {
 .bookmark-date {
     font-size: 12px;
     font-style: italic;
+    display: none;
 }
 
 
@@ -96,8 +97,8 @@ input:focus {
     padding: 5px 15px;
 }
 
-.container-list tr:hover {
-    background: #161633;
+.container-list tr:hover .bookmark-date {
+    display: block;
 }
 
 .container-input {
