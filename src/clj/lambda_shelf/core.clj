@@ -9,7 +9,6 @@
             [lambda-shelf.database :as database]))
 
 
-                                        ; ring server, only for production
 (enlive/deftemplate page
   (io/resource "public/index.html")
   []
@@ -35,6 +34,13 @@
   (POST "/bookmark/vote" request
         (let [data (-> request :body slurp read-string)
               resp (database/vote-bookmark data)]
+          {:status 200
+           :headers {"Content-Type" "application/edn"}
+           :body (str (database/get-all-bookmarks))}))
+
+(POST "/bookmark/tag" request
+        (let [data (-> request :body slurp read-string)
+              resp (database/tag-bookmark data)]
           {:status 200
            :headers {"Content-Type" "application/edn"}
            :body (str (database/get-all-bookmarks))}))
