@@ -9,6 +9,9 @@
        :user "eve"
        :password "pg12"}))
 
+(def test-data [{:title "the master himself" :url "https://github.com/kordano" }
+                {:title "nomads blog" :url "http://functional-nomads.github.io"}
+                {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}])
 
 ;; --- database management bamboozle ---
 
@@ -26,7 +29,7 @@
      [:title :text]
      [:url :text]
      [:votes :int "NOT NULL" "DEFAULT 0"]
-     [:tags "text"]
+     [:tags "text" "DEFAULT ''"]
      [:date :timestamp "NOT NULL" "DEFAULT CURRENT_TIMESTAMP"])))
 
 
@@ -77,12 +80,6 @@
     (println "done")))
 
 
-(defn initialize-databases []
-   (migrate "bookmark" create-bookmark-table)
-   (upgrade "bookmark" "votes" upgrade-votes-bookmark-table)
-   (migrate "tag" create-tag-table))
-
-
 ;; database I/O
 
 (defn insert-bookmark [{:keys [title url]}]
@@ -115,14 +112,16 @@
 (defn get-all-bookmarks []
   (vec (sql/query spec ["SELECT * FROM bookmark"])))
 
+(defn initialize-databases []
+   (migrate "bookmark" create-bookmark-table)
+   (upgrade "bookmark" "votes" upgrade-votes-bookmark-table)
+   (migrate "tag" create-tag-table)
+   (doall (map insert-bookmark test-data)))
+
 
 ;; --- TESTING N STUFF ---
 #_(sql/db-do-commands spec (sql/drop-table-ddl :bookmark))
 #_(sql/db-do-commands spec (sql/drop-table-ddl :tag))
-#_(def test-data [{:title "the master himself" :url "https://github.com/kordano" }
-                {:title "nomads blog" :url "http://functional-nomads.github.io"}
-                {:title "solar raspberry" :url "http://www.instructables.com/id/Solar-Powered-Raspberry-Pi/?ALLSTEPS"}])
 
 #_(initialize-databases)
-#_(doall (map insert-bookmark test-data))
 #_(upgrade)
