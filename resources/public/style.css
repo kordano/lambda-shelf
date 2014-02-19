@@ -112,6 +112,32 @@ input:focus {
 }
 
 
+/* navigation */
+.paging-bar {
+    width: 50%;
+    margin: 2% 25%;
+}
+
+.nav-button {
+    background-color:#101025;
+    -moz-border-radius:3px;
+    -webkit-border-radius:3px;
+    border-radius:3px;
+    border:1px solid #7070aa;
+    cursor:pointer;
+    color:#7070aa;
+    font-size: 100%;
+    width: 40%;
+    margin-right: 5%;
+    margin-left: 5%;
+}
+.nav-button:hover {
+    background-color:#101025;
+    color: #50afde;
+    border-color: #50afde;
+}
+
+
 
 /* all */
 ::-webkit-input-placeholder {
@@ -128,6 +154,9 @@ input:-moz-placeholder {
 }
 
 
+
+
+/* design voting*/
 .arrow {
    height: 0;
    width: 0;
