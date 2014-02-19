@@ -53,7 +53,7 @@ input:focus {
 }
 
 /* bookmarks specific */
-#bookmark-container {
+.container {
     margin: 5% 15%;
 }
 
@@ -68,7 +68,7 @@ input:focus {
 .bookmark-date {
     font-size: 12px;
     font-style: italic;
-    display: none;
+    visibility: hidden;
 }
 
 
@@ -98,7 +98,7 @@ input:focus {
 }
 
 .container-list tr:hover .bookmark-date {
-    display: block;
+    visibility: visible;
 }
 
 .container-input {
