@@ -4,6 +4,7 @@
             [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
+            [clojure.string :refer [blank?]]
             [lambda-shelf.communicator :refer [post-edn get-edn]])
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
@@ -51,28 +52,25 @@
       (om/set-state! owner :title-text ""))))
 
 
-
 (defn bookmark-view [{:keys [title url date id votes] :as bookmark} owner]
   (reify
     om/IRenderState
-    (render-state [this {:keys [upvote downvote]}]
+    (render-state [this {:keys [incoming]}]
       (dom/tr nil
               (dom/td nil
                       (dom/div
-                       #js {:onClick
-                            (fn [e]
-                              (do
-                                (post-edn "bookmark/vote" (str {:id id :upvote true}))
-                                (put! upvote @bookmark))) :className "arrow up"})
+                       #js {:onClick #(go
+                                        (>! incoming
+                                          (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))
+                            :className "arrow up"})
 
                       (dom/br nil)
 
                       (dom/div
-                       #js {:onClick
-                            (fn [e]
-                              (do
-                                (post-edn "bookmark/vote" (str {:id id :upvote false}))
-                                (put! downvote @bookmark))) :className "arrow down"}))
+                       #js {:onClick #(go
+                                        (>! incoming
+                                          (<! (post-edn "bookmark/vote" (str {:id id :upvote false})))))
+                             :className "arrow down"}))
 
               (dom/td #js {:className "bookmark-voting"} (dom/a nil votes))
               (dom/td #js {:className "bookmark-title"} (dom/a #js {:href url} title))
@@ -81,68 +79,60 @@
 
 (defn bookmarks-view [app owner]
   (reify
-
     om/IInitState
     (init-state [_]
-      {:upvote (chan)
-       :downvote (chan)
-       :incoming (chan)
+      {:incoming (chan)
        :url-text ""
        :title-text ""
        :shown 8})
 
     om/IWillMount
     (will-mount [_]
-      (let [upvote (om/get-state owner :upvote)
-            downvote (om/get-state owner :downvote)
-            incoming (om/get-state owner :incoming)]
+      (let [incoming (om/get-state owner :incoming)]
         (go
           (loop []
-            (let [[v c] (alts! [upvote downvote incoming])]
+            (let [[v c] (alts! [incoming])]
               (condp = c
-                upvote (om/transact! app :bookmarks (apply-to-entry v :votes inc))
-                downvote (om/transact! app :bookmarks (apply-to-entry v :votes dec))
-                incoming (om/transact! app :bookmarks
-                                       (fn [bookmarks]
-                                         (let [ids (into #{} (map :id bookmarks))]
-                                           (into []
-                                                 (sort-by :date >
-                                                          (into bookmarks
-                                                                (remove #(contains? ids (% :id)) v))))))))
+                incoming (om/transact! app :bookmarks (fn [_] (vec (sort-by :date > v)))))
               (recur))))
+        ;; auto update bookmarks all 5 minutes
         (go
           (while true
             (>! incoming (<! (get-edn "bookmark/init")))
-            (<! (timeout 60000))))))
+            (<! (timeout 300000))))))
 
     om/IRenderState
-    (render-state [this {:keys [upvote downvote incoming shown] :as state}]
+    (render-state [this {:keys [incoming shown url-text title-text] :as state}]
       (dom/div #js {:id "bookmark-container" :className "container"}
                (dom/div #js {:className "container-input"}
                         (dom/span nil
                                   (dom/input #js {:type "text"
                                                   :ref "new-url"
-                                                  :value (:url-text state)
+                                                  :value url-text
                                                   :placeholder "URL"
                                                   :onChange #(handle-url-change % owner state)}))
                         (dom/span nil
                                   (dom/input #js {:type "text"
                                                   :ref "new-title"
-                                                  :value (:title-text state)
+                                                  :value title-text
                                                   :placeholder "Title"
                                                   :onChange #(handle-title-change % owner state)
-                                                  :onKeyPress #(when (== (.-keyCode %) 13)
+                                                  :onKeyPress #(when (and (== (.-keyCode %) 13)
+                                                                          (not (blank? url-text)))
                                                                  (add-bookmark app owner))}))
-                        (dom/button #js {:onClick #(add-bookmark app owner)
+                        (dom/button #js {:onClick #(when (not (or (blank? title-text) (blank? url-text))) (add-bookmark app owner))
                                          :className "add-button"} "ADD"))
                (dom/div #js {:className "container-header"}
                         (dom/a nil "Bookmarks"))
                (dom/div #js {:className "container-list"}
                         (apply dom/table nil
                                (om/build-all bookmark-view (take shown (:bookmarks app))
-                                             {:init-state {:upvote upvote :downvote downvote :incoming incoming}}))
-                        (dom/button #js {:onClick #(om/set-state! owner :shown (* shown 2))
-                                         :className "add-button"} "Show more"))))))
+                                             {:init-state {:incoming incoming}}))
+                        (dom/div #js {:className "paging-bar"}
+                                 (dom/button #js {:onClick #(om/set-state! owner :shown (+ shown 8))
+                                                  :className "nav-button"} "Show more")
+                                 (dom/button #js {:onClick #(om/set-state! owner :shown (if (> shown 8) (- shown 8) 8))
+                                                  :className "nav-button"} "Show less")))))))
 
 
 (om/root
