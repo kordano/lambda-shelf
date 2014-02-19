@@ -1,14 +1,19 @@
 (ns lambda-shelf.client
   (:require [hiccups.runtime :as hiccupsrt]
             [clojure.browser.repl]
-            [cljs.core.async :refer [put! chan <! >! alts!]]
+            [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
             [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [lambda-shelf.communicator :refer [post-edn get-edn]])
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
 
-(.log js/console "HAIL TO THE LAMBDA!")
+
+(defn log [arg]
+  (.log js/console (str arg)))
+
+
+(log "HAIL TO THE LAMBDA!")
 
 ;; fire up repl
 #_(do
@@ -38,21 +43,13 @@
 (defn add-bookmark [app owner]
   "read input data, send it to server and update dom"
   (let [new-title (.-value (om/get-node owner "new-title"))
-        new-url (.-value (om/get-node owner "new-url"))]
+        new-url (.-value (om/get-node owner "new-url"))
+        package (str {:title new-title :url new-url})]
     (go
-      (let [db-bookmarks (<! (post-edn "bookmark/add"
-                            (str {:title new-title :url new-url})))]
-        (om/transact! app :bookmarks
-         (fn [bookmarks]
-           (let [ids (into #{} (map :id bookmarks))]
-             (into []
-                   (sort-by :date >
-                            (into bookmarks
-                                  (remove
-                                   #(contains? ids (% :id))
-                                   db-bookmarks)))))))
-        (om/set-state! owner :url-text "")
-        (om/set-state! owner :title-text "")))))
+      (>! (om/get-state owner :incoming) (<! (post-edn "bookmark/add" package)))
+      (om/set-state! owner :url-text "")
+      (om/set-state! owner :title-text ""))))
+
 
 
 (defn bookmark-view [{:keys [title url date id votes] :as bookmark} owner]
@@ -84,29 +81,43 @@
 
 (defn bookmarks-view [app owner]
   (reify
+
     om/IInitState
     (init-state [_]
       {:upvote (chan)
        :downvote (chan)
        :incoming (chan)
        :url-text ""
-       :title-text ""})
+       :title-text ""
+       :shown 8})
+
     om/IWillMount
     (will-mount [_]
       (let [upvote (om/get-state owner :upvote)
-            downvote (om/get-state owner :downvote)]
+            downvote (om/get-state owner :downvote)
+            incoming (om/get-state owner :incoming)]
         (go
           (loop []
-            (let [[bookmark c] (alts! [upvote downvote])]
+            (let [[v c] (alts! [upvote downvote incoming])]
               (condp = c
-                upvote (om/transact! app :bookmarks
-                        (apply-to-entry bookmark :votes inc))
-                downvote (om/transact! app :bookmarks
-                        (apply-to-entry bookmark :votes dec)))
-              (recur))))))
+                upvote (om/transact! app :bookmarks (apply-to-entry v :votes inc))
+                downvote (om/transact! app :bookmarks (apply-to-entry v :votes dec))
+                incoming (om/transact! app :bookmarks
+                                       (fn [bookmarks]
+                                         (let [ids (into #{} (map :id bookmarks))]
+                                           (into []
+                                                 (sort-by :date >
+                                                          (into bookmarks
+                                                                (remove #(contains? ids (% :id)) v))))))))
+              (recur))))
+        (go
+          (while true
+            (>! incoming (<! (get-edn "bookmark/init")))
+            (<! (timeout 60000))))))
+
     om/IRenderState
-    (render-state [this {:keys [upvote downvote incoming] :as state}]
-      (dom/div #js {:id "bookmark-container"}
+    (render-state [this {:keys [upvote downvote incoming shown] :as state}]
+      (dom/div #js {:id "bookmark-container" :className "container"}
                (dom/div #js {:className "container-input"}
                         (dom/span nil
                                   (dom/input #js {:type "text"
@@ -128,14 +139,10 @@
                         (dom/a nil "Bookmarks"))
                (dom/div #js {:className "container-list"}
                         (apply dom/table nil
-                               (om/build-all bookmark-view (:bookmarks app)
-                                             {:init-state {:upvote upvote :downvote downvote :incoming incoming}})))))))
-
-
-;; set initial state
-(go
-  (let [init-data (<! (get-edn "bookmark/init"))]
-    (swap! app-state assoc :bookmarks (into [] (sort-by :date > init-data)))))
+                               (om/build-all bookmark-view (take shown (:bookmarks app))
+                                             {:init-state {:upvote upvote :downvote downvote :incoming incoming}}))
+                        (dom/button #js {:onClick #(om/set-state! owner :shown (* shown 2))
+                                         :className "add-button"} "Show more"))))))
 
 
 (om/root
