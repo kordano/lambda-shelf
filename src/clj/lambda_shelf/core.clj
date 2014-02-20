@@ -9,6 +9,16 @@
             [lambda-shelf.database :as database]))
 
 
+(defn fetch-url [url]
+  (enlive/html-resource (java.net.URL. url)))
+
+(defn fetch-url-title [url]
+  (-> (fetch-url url)
+      (enlive/select [:head :title])
+      first
+      :content
+      first))
+
 (enlive/deftemplate page
   (io/resource "public/index.html")
   []
@@ -26,7 +36,7 @@
 
   (POST "/bookmark/add" request
         (let [data (-> request :body slurp read-string)
-              resp (database/insert-bookmark data)]
+              resp (database/insert-bookmark (assoc data :title (fetch-url-title (:url data))))]
           {:status 200
            :headers {"Content-Type" "application/edn"}
            :body (str (database/get-all-bookmarks))}))
@@ -59,6 +69,6 @@
     (start port)))
 
 ;; --- TESTING ---
-#_(defonce server (start 8080))
+(defonce server (start 8080))
 #_(.stop server)
 #_(.start server)
