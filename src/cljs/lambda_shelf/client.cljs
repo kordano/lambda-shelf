@@ -10,11 +10,7 @@
                    [cljs.core.async.macros :refer [go]]))
 
 
-(defn log [arg]
-  (.log js/console (str arg)))
-
-
-(log "HAIL TO THE LAMBDA!")
+(.log js/console "HAIL TO THE LAMBDA!")
 
 ;; fire up repl
 #_(do
@@ -215,6 +211,6 @@
 
 
 (om/root
-  app-state
   bookmarks-view
-  (. js/document (getElementById "bookmarks")))
+  app-state
+  {:target (. js/document (getElementById "bookmarks"))})

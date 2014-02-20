@@ -19,8 +19,8 @@
                  [ring "1.2.1"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
-                 [om "0.3.6"]
-                 [com.facebook/react "0.8.0.1"]
+                 [om "0.5.0"]
+                 [com.facebook/react "0.9.0"]
                  [hiccups "0.3.0"]]
 
   :plugins [[lein-cljsbuild "1.0.1"]
