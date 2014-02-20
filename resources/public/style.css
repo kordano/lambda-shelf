@@ -61,8 +61,11 @@ input:focus {
     font-size: 22px;
 }
 
-.bookmark-title a:link {color:#7070aa;}      /* unvisited link */
-.bookmark-title a:visited {color:#ab7070;}  /* visited link */
+.bookmark-title a:link {
+    color:#7070aa;
+    text-decoration: none;} /* unvisited link */
+.bookmark-title a:visited {color:#404075;
+                          }  /* visited link */
 .bookmark-title a:hover {color:#50afde;}  /* mouse over link */
 
 .bookmark-date {
@@ -86,6 +89,7 @@ input:focus {
 
 
 .container-list {
+    margin-top: 3%;
     width: 100%;
 }
 
