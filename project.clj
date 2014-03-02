@@ -21,7 +21,8 @@
                  [compojure "1.1.6"]
                  [om "0.5.0"]
                  [com.facebook/react "0.9.0"]
-                 [hiccups "0.3.0"]]
+                 [hiccups "0.3.0"]
+                 [sablono "0.2.6"]]
 
   :plugins [[lein-cljsbuild "1.0.1"]
             [com.cemerick/austin "0.1.3"]
