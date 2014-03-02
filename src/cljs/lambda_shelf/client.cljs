@@ -3,8 +3,8 @@
             [clojure.browser.repl]
             [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
             [om.core :as om :include-macros true]
-            [om.dom :as dom :include-macros true]
             [clojure.string :refer [blank?]]
+            [sablono.core :as html :refer-macros [html]]
             [lambda-shelf.communicator :refer [post-edn get-edn]])
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
@@ -23,12 +23,8 @@
                       :notifications [""]}))
 
 
-(defn handle-url-change [e owner {:keys [url-text]}]
-  (om/set-state! owner :url-text (.. e -target -value)))
-
-
-(defn handle-title-change [e owner {:keys [title-text]}]
-  (om/set-state! owner :title-text (.. e -target -value)))
+(defn handle-text-change [e owner {:keys [text]} type]
+  (om/set-state! owner [:input-text type] (.. e -target -value)))
 
 
 (defn apply-to-entry [x k f]
@@ -41,37 +37,37 @@
 (defn add-bookmark [app owner]
   "read input data, send it to server and update dom"
   (let [new-url (.-value (om/get-node owner "new-url"))
-        package (str {:url new-url})]
+        new-title (.-value (om/get-node owner "new-title"))
+        package (str {:url new-url :title new-title})]
     (go
       (>! (om/get-state owner :incoming) (<! (post-edn "bookmark/add" package)))
-      (om/set-state! owner :url-text "")
-      (om/set-state! owner :title-text ""))))
+      (om/set-state! owner [:input-text :url] "")
+      (om/set-state! owner [:input-text :title] ""))))
+
+
+(defn fetch-url-title [app owner url]
+  (let [package (str {:url url})]
+    (go
+      (let [title (:title (<! (post-edn "bookmark/fetch-title" package)))]
+        (.log js/console title)
+        (om/set-state! owner [:input-text :title] title)))))
 
 
 (defn bookmark-view [{:keys [title url date id votes] :as bookmark} owner]
   (reify
     om/IRenderState
     (render-state [this {:keys [incoming]}]
-      (dom/tr nil
-              (dom/td nil
-                      (dom/div
-                       #js {:onClick #(go
-                                        (>! incoming
-                                          (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))
-                            :className "arrow up"})
-
-                      (dom/br nil)
-
-                      (dom/div
-                       #js {:onClick #(go
-                                        (>! incoming
-                                          (<! (post-edn "bookmark/vote" (str {:id id :upvote false})))))
-                             :className "arrow down"}))
-
-              (dom/td #js {:className "bookmark-voting"} (dom/a nil votes))
-              (dom/td #js {:className "bookmark-title"} (dom/a #js {:href url} title))
-              (dom/td #js {:className "bookmark-date"} (dom/a nil (.toLocaleString date)))))))
-
+      (html
+       [:tr
+        [:td.bookmark-voting [:a votes]]
+        [:td.bookmark-title [:a {:href url} title]]
+        [:td.bookmark-date [:a (.toLocaleString date)]]
+        [:td [:button.btn.btn-default.btn-xs
+              {:type "button"
+               :on-click #(go
+                            (>! incoming
+                              (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
+              [:span.glyphicon.glyphicon-plus]]]]))))
 
 (defn update-notification [app owner value]
   (let [notify-node (om/get-node owner "center-notification")]
@@ -90,25 +86,28 @@
     om/IInitState
     (init-state [_]
       {:incoming (chan)
+       :fetch (chan)
        :notify (chan)
-       :url-text ""
-       :shown 8
+       :input-text {:url "" :title ""}
+       :page 0
+       :page-size 8
        :counter 0})
-
 
     om/IWillMount
     (will-mount [_]
       (let [incoming (om/get-state owner :incoming)
             notify (om/get-state owner :notify)
-            counter (om/get-state owner :counter)]
+            counter (om/get-state owner :counter)
+            fetch (om/get-state owner :fetch)]
         (go
           (loop []
-            (let [[v c] (alts! [incoming notify])]
+            (let [[v c] (alts! [incoming notify fetch])]
               (condp = c
                 notify (update-notification app owner v)
                 incoming (do
                            (om/transact! app :bookmarks (fn [_] (vec (sort-by :date > v))))
-                           (om/set-state! owner :counter (count v))))
+                           (om/set-state! owner :counter (count v)))
+                fetch (fetch-url-title app owner v))
               (recur))))
 
         ;; welcome message
@@ -124,93 +123,99 @@
 
 
     om/IRenderState
-    (render-state [this {:keys [incoming shown notify counter url-text] :as state}]
-      (dom/div
-       nil
+    (render-state [this {:keys [incoming page page-size notify counter input-text fetch] :as state}]
+      (html
+       [:div
+        ;; general notification container
+        [:div#main-notification.notifcation-container
+         [:span
+          [:a {:ref "center-notification"} (last (:notifications app))]]]
 
-       ;; general notification container
-       (dom/div
-        #js {:id "main-notification" :className "notification-container"}
-        (dom/span
-         nil
-         (dom/a
-          #js {:id "testme"
-               :ref "center-notification"}
-          (last (:notifications app)))))
-
-       ;; main container
-       (dom/div
-        #js {:id "bookmark-container" :className "container"}
 
         ;; container input
-        (dom/div
-         #js {:className "container-input"}
+        [:div#input-form {:role "form"}
+         [:div.form-group
+          [:label {:for "bookmark-url-input"} "bookmark url"]
+         [:input#bookmark-url-input.form-control
+          {:type "url"
+           :ref "new-url"
+           :value (:url input-text)
+           :placeholder "URL"
+           :on-change #(handle-text-change % owner state :url)
+           :onKeyPress #(when (== (.-keyCode %) 13)
+                          (if (not (blank? (:url input-text)))
+                            (do
+                              (put! notify "Adding bookmark")
+                              (add-bookmark app owner))
+                            (put! notify "url input missing")))}]]
 
-         (dom/span
-          nil
-          (dom/input
-           #js {:type "text"
-                :ref "new-url"
-                :value url-text
-                :placeholder "URL"
-                :onChange #(handle-url-change % owner state)
-                :onKeyPress #(when (== (.-keyCode %) 13)
-                               (if (not (blank? url-text))
-                                 (do
-                                   (put! notify "Adding bookmark")
-                                   (add-bookmark app owner))
-                                 (put! notify "url input missing")))}))
+         [:label {:for "bookmark-title-input"} "Bookmark Title"]
+         [:div.input-group
+          [:input#bookmark-title-input.form-control
+           {:type "text"
+            :ref "new-title"
+            :value (:title input-text)
+            :placeholder "Title"
+            :on-change #(handle-text-change % owner state :title)
+            :onKeyPress #(when (== (.-keyCode %) 13)
+                           (if (not (blank? (:url input-text)))
+                             (do
+                               (put! notify "Adding bookmark")
+                               (add-bookmark app owner))
+                             (put! notify "input missing")))}]
+          [:span.input-group-btn
+           [:button.btn.btn-default {:type "button"
+                                     :on-click #(if (not (blank? (:url input-text)))
+                                                  (do
+                                                    (put! notify "fetching title ...")
+                                                    (put! fetch (:url input-text)))
+                                                  (put! notify "input missing"))}
+            "Fetch!"]]]]
 
-         (dom/button
-          #js {:onClick #(when (not (blank? url-text))
-                           (do
-                             (put! notify "bookmark added")
-                             (add-bookmark app owner))
-                           (put! notify "input missing"))
-               :className "add-button"}
-          "ADD"))
+        [:br]
+        [:button.btn.btn-primary
+         {:on-click #(if (not (blank? (:url input-text)))
+                       (do
+                         (put! notify "bookmark added")
+                         (add-bookmark app owner))
+                       (put! notify "input missing"))
+          :type "button"}
+         "ADD"]
 
         ;; container header
-        (dom/div
-         #js {:className "container-header"}
-         (dom/a nil "Bookmarks"))
+
+        [:h2.page-header "Bookmarks"]
 
         ;; container list
-        (dom/div
-         #js {:className "container-list"}
-         (apply
-          dom/table
-          nil
-          (om/build-all
-           bookmark-view (take shown (:bookmarks app))
-           {:init-state {:incoming incoming :notify notify}}))
 
-         ;; control viewed amount of records with two buttons
-         (dom/div
-          #js {:className "paging-bar"}
+        [:div.table-responsive
+         [:table.table.table-striped
+          [:tbody
+           (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
+                         {:init-state {:incoming incoming :notify notify}})]]]
 
-          (dom/button
-           #js {:onClick #(om/set-state!
-                           owner
-                           :shown
-                           (if (< shown counter)
-                             (+ shown 8)
-                             shown))
-                :className "nav-button"}
-           "Show more")
-
-          (dom/button
-           #js {:onClick #(om/set-state!
-                           owner
-                           :shown
-                           (if (> shown 8)
-                             (- shown 8)
-                             8))
-                :className "nav-button"}
-           "Show less"))))))))
+        [:ul.pager
+         [:li.previous
+          [:a#prev-page-btn
+           {:href "#"
+            :on-click #(do
+                         (.log js/console page)
+                         (om/set-state!
+                          owner
+                          :page
+                          (if (> page 0)
+                            (dec page)
+                            0)))}
+           "newer"]]
+         [:li.next
+          {:on-click #(let [not-end? (< (* page-size (inc page)) counter)]
+                        (om/set-state!
+                         owner
+                         :page
+                         (if not-end?
+                           (inc page)
+                           page)))}
+          [:a {:href "#"} "older"]]]]))))
 
 
-(om/root
-  bookmarks-view
-  app-state
-  {:target (. js/document (getElementById "bookmarks"))})
+(om/root bookmarks-view app-state {:target (. js/document (getElementById "bookmarks"))})
