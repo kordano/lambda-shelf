@@ -12,6 +12,7 @@
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
 
+
 (defn fetch-url-title [url]
   "fetch url and extract title"
   (-> (fetch-url url)
@@ -19,6 +20,7 @@
       first
       :content
       first))
+
 
 (enlive/deftemplate page
   (io/resource "public/index.html")
@@ -37,7 +39,7 @@
 
   (POST "/bookmark/add" request
         (let [data (-> request :body slurp read-string)
-              resp (database/insert-bookmark (assoc data :title (fetch-url-title (:url data))))]
+              resp (database/insert-bookmark (update-in data [:title] #(if (= "" %) (fetch-url-title (:url data)) %)))]
           {:status 200
            :headers {"Content-Type" "application/edn"}
            :body (str (database/get-all-bookmarks))}))
@@ -46,7 +48,7 @@
         (let [data (-> request :body slurp read-string)]
           {:status 200
            :headers {"Content-Type" "application/edn"}
-           :body (str (fetch-url-title (:url data)))}))
+           :body (str {:title (fetch-url-title (:url data))})}))
 
   (POST "/bookmark/vote" request
         (let [data (-> request :body slurp read-string)
