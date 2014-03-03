@@ -23,7 +23,7 @@
                       :notifications [""]}))
 
 
-(defn handle-text-change [e owner {:keys [text]} type]
+(defn handle-text-change [e owner {:keys [input-text]} type]
   (om/set-state! owner [:input-text type] (.. e -target -value)))
 
 
@@ -38,10 +38,12 @@
   "read input data, send it to server and update dom"
   (let [new-url (.-value (om/get-node owner "new-url"))
         new-title (.-value (om/get-node owner "new-title"))
-        package (str {:url new-url :title new-title})]
+        new-comment (.-value (om/get-node owner "new-comment"))
+        package (str {:url new-url :title new-title :comment new-comment})]
     (go
       (>! (om/get-state owner :incoming) (<! (post-edn "bookmark/add" package)))
       (om/set-state! owner [:input-text :url] "")
+      (om/set-state! owner [:input-text :comment] "")
       (om/set-state! owner [:input-text :title] ""))))
 
 
@@ -53,21 +55,31 @@
         (om/set-state! owner [:input-text :title] title)))))
 
 
-(defn bookmark-view [{:keys [title url date id votes] :as bookmark} owner]
-  (reify
-    om/IRenderState
-    (render-state [this {:keys [incoming]}]
-      (html
-       [:tr
-        [:td.bookmark-voting [:a votes]]
-        [:td.bookmark-title [:a {:href url} title]]
-        [:td.bookmark-date [:a (.toLocaleString date)]]
-        [:td [:button.btn.btn-default.btn-xs
-              {:type "button"
-               :on-click #(go
-                            (>! incoming
-                              (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
-              [:span.glyphicon.glyphicon-plus]]]]))))
+(defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
+  (let [comment-count (count comments)]
+      (reify
+        om/IRenderState
+        (render-state [this {:keys [incoming]}]
+          (html
+           [:tr
+            [:td.bookmark-title [:a {:href url} title]]
+            [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
+            [:td.bookmark-comments [:a {:href "#"}
+                                    [:span.badge
+                                     {:data-toggle "tooltip"
+                                      :data-placement "left"
+                                      :title "Comments"}
+                                     comment-count]]]
+            [:td [:button.btn.btn-default.btn-sm
+                  {:type "button"
+                   :data-toggle "tooltip"
+                   :data-placement "left"
+                   :title "Votes"
+                   :on-click #(go
+                                (>! incoming
+                                  (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
+                  [:span votes]
+                  " \u03BB"]]])))))
 
 (defn update-notification [app owner value]
   (let [notify-node (om/get-node owner "center-notification")]
@@ -88,7 +100,7 @@
       {:incoming (chan)
        :fetch (chan)
        :notify (chan)
-       :input-text {:url "" :title ""}
+       :input-text {:url "" :title "" :comment ""}
        :page 0
        :page-size 8
        :counter 0})
@@ -131,11 +143,10 @@
          [:span
           [:a {:ref "center-notification"} (last (:notifications app))]]]
 
-
         ;; container input
         [:div#input-form {:role "form"}
          [:div.form-group
-          [:label {:for "bookmark-url-input"} "bookmark url"]
+          [:label {:for "bookmark-url-input"} "Website"]
          [:input#bookmark-url-input.form-control
           {:type "url"
            :ref "new-url"
@@ -149,7 +160,7 @@
                               (add-bookmark app owner))
                             (put! notify "url input missing")))}]]
 
-         [:label {:for "bookmark-title-input"} "Bookmark Title"]
+         [:label {:for "bookmark-title-input"} "Name"]
          [:div.input-group
           [:input#bookmark-title-input.form-control
            {:type "text"
@@ -170,9 +181,20 @@
                                                     (put! notify "fetching title ...")
                                                     (put! fetch (:url input-text)))
                                                   (put! notify "input missing"))}
-            "Fetch!"]]]]
+            "Fetch!"]]]
 
-        [:br]
+         [:br]
+
+         [:div.form-group
+          [:label {:for "bookmark-comment-input"} "Comment"]
+          [:textarea#bookmark-comment-input.form-control
+           {:type "text"
+            :ref "new-comment"
+            :value (:comment input-text)
+            :rows 3
+            :on-change #(handle-text-change % owner state :comment)
+            :placeholder "Write about it ..."}]]]
+
         [:button.btn.btn-primary
          {:on-click #(if (not (blank? (:url input-text)))
                        (do
