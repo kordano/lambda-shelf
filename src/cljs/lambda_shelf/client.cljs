@@ -199,7 +199,7 @@
        :notify (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment ""}
        :page 0
-       :page-size 16
+       :page-size 9
        :counter 0})
 
     om/IWillMount
@@ -317,7 +317,7 @@
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
                          {:init-state {:incoming incoming :notify notify}})]]]
 
-        (let [page-count (Math/floor (/ counter page-size))]
+        (let [page-count (/ counter page-size)]
           [:div.text-center
            [:ul.pagination
             (if (= page 0)
@@ -332,9 +332,9 @@
                 (vec [:li
                       [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page %))}
                        (inc %)]]))
-             (range 0 (inc page-count)))
+             (range 0 page-count))
 
-            (if (= page page-count)
+            (if (= page (Math/floor page-count))
               [:li.disabled [:a {:href "#"} "\u00BB"]]
               [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]])]))))
 
