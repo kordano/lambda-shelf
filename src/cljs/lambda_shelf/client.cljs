@@ -199,7 +199,7 @@
        :notify (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment ""}
        :page 0
-       :page-size 9
+       :page-size 16
        :counter 0})
 
     om/IWillMount
