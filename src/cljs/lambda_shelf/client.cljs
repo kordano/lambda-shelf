@@ -47,6 +47,18 @@
       (om/set-state! owner [:input-text :title] ""))))
 
 
+(defn add-bookmark-comment [{:keys [id] :as bookmark} owner]
+  (let [new-comment (.-value (om/get-node owner (str "new-comment-" id)))]
+    (if (= 0 (.-length (.trim new-comment)))
+      (.log js/console "blank comment")
+      (go
+        (>! (om/get-state owner :incoming)
+          (<! (post-edn
+               "bookmark/comment"
+               (str {:id id
+                     :comment new-comment}))))
+        (om/set-state! owner [:input-text :modal-comment] "")))))
+
 (defn fetch-url-title [app owner url]
   (let [package (str {:url url})]
     (go
@@ -63,7 +75,7 @@
     (render-state [this {:keys [incoming input-text] :as state}]
       (html
        [:div.modal.fade
-        {:tabindex -1
+        {:tab-index -1
          :id (str "comments-modal-" id)
          :role "dialog"
          :aria-labelledby (str "comments-modal-label-" id)
@@ -93,15 +105,7 @@
               :placeholder "What do you think?"}]]
            [:button.btn.btn-primary.btn-xs
             {:type "button"
-             :on-click #(do
-                          (go
-                              (>! incoming
-                                (<! (post-edn
-                                     "bookmark/comment"
-                                     (str {:id id
-                                           :comment (.-value (om/get-node owner (str "new-comment-" id)))})))))
-                            (om/set-state! owner [:input-text :modal-comment] ""))}
-
+             :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
             "add comment"]]
 
           [:div.modal-footer
@@ -115,20 +119,44 @@
   (let [comment-count (count comments)]
       (reify
         om/IRenderState
-        (render-state [this {:keys [incoming]}]
+        (render-state [this {:keys [incoming input-text] :as state}]
           (html
            [:tr
-            [:td.bookmark-title [:a {:href url} title]]
+
+            [:td.bookmark-title
+             [:a {:href url :target "_blank"} title]
+             [:div.panel-collapse.collapse
+              {:id (str "comments-panel-" id)}
+              [:br]
+              [:ul.list-group
+               (map #(vec [:li.list-group-item %]) comments)]
+              [:br]
+              [:div.form-group
+               [:textarea.form-control
+                {:type "text"
+                 :ref (str "new-comment-" id)
+                 :rows 3
+                 :value (:modal-comment input-text)
+                 :style {:resize "vertical"}
+                 :on-change #(handle-text-change % owner state :modal-comment)
+                 :placeholder "What do you think?"}]]
+              [:button.btn.btn-primary.btn-xs
+               {:type "button"
+                :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
+               "add comment"]]]
+
             [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
+
             [:td.bookmark-comments
-             [:a {:href "#"
-                  :data-toggle "modal"
-                  :data-target (str "#comments-modal-" id)}
+             [:a {:href (str "#comments-panel-" id)
+                  :data-parent "#bookmark-table"
+                  :data-toggle "collapse"}
               [:span.badge
                {:data-toggle "tooltip"
                 :data-placement "left"
                 :title "Comments"}
                comment-count]]]
+
             [:td [:button.btn.btn-default.btn-sm
                   {:type "button"
                    :data-toggle "tooltip"
@@ -162,7 +190,7 @@
        :notify (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment ""}
        :page 0
-       :page-size 8
+       :page-size 16
        :counter 0})
 
     om/IWillMount
@@ -252,6 +280,7 @@
             :ref "new-comment"
             :value (:comment input-text)
             :rows 3
+            :style {:resize "vertical"}
             :on-change #(handle-text-change % owner state :comment)
             :placeholder "Write about it ..."}]]]
 
@@ -272,12 +301,9 @@
 
         [:div.table-responsive
          [:table.table.table-striped
-          [:tbody
+          [:tbody#bookmark-table
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                         {:init-state {:incoming incoming :notify notify}})
-           (om/build-all comments-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                         {:init-state {:incoming incoming :notify notify}})
-           ]]]
+                         {:init-state {:incoming incoming :notify notify}})]]]
 
         [:ul.pager
          [:li.previous
