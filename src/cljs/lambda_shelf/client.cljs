@@ -228,7 +228,7 @@
           (while true
             (.log js/console "Updating bookmarks ...")
             (>! incoming (<! (get-edn "bookmark/init")))
-            (<! (timeout 300000))))))
+            (<! (timeout 3000000))))))
 
 
     om/IRenderState
@@ -317,28 +317,26 @@
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
                          {:init-state {:incoming incoming :notify notify}})]]]
 
-        [:ul.pager
-         [:li.previous
-          [:a#prev-page-btn
-           {:href "#"
-            :on-click #(do
-                         (.log js/console page)
-                         (om/set-state!
-                          owner
-                          :page
-                          (if (> page 0)
-                            (dec page)
-                            0)))}
-           "newer"]]
-         [:li.next
-          {:on-click #(let [not-end? (< (* page-size (inc page)) counter)]
-                        (om/set-state!
-                         owner
-                         :page
-                         (if not-end?
-                           (inc page)
-                           page)))}
-          [:a {:href "#"} "older"]]]]))))
+        (let [page-count (Math/floor (/ counter page-size))]
+          [:div.text-center
+           [:ul.pagination
+            (if (= page 0)
+              [:li.disabled [:a {:href "#"} "\u00AB"]]
+              [:li [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page (dec page)))} "\u00AB"]])
+
+            (map
+             #(if (= % page)
+                (vec [:li.active
+                      [:a {:href "#"} (inc %)
+                       [:span.sr-only "(current)"]]])
+                (vec [:li
+                      [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page %))}
+                       (inc %)]]))
+             (range 0 (inc page-count)))
+
+            (if (= page page-count)
+              [:li.disabled [:a {:href "#"} "\u00BB"]]
+              [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]])]))))
 
 
 (om/root bookmarks-view app-state {:target (. js/document (getElementById "bookmarks"))})
