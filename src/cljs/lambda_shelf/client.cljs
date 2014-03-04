@@ -39,9 +39,14 @@
   (let [new-url (.-value (om/get-node owner "new-url"))
         new-title (.-value (om/get-node owner "new-title"))
         new-comment (.-value (om/get-node owner "new-comment"))
+        add-btn (om/get-node owner "add-btn")
         package (str {:url new-url :title new-title :comment new-comment})]
     (go
+      (set! (.-innerHTML add-btn) "Adding...")
+      (set! (.-disabled add-btn) true)
       (>! (om/get-state owner :incoming) (<! (post-edn "bookmark/add" package)))
+      (set! (.-innerHTML add-btn) "Add!")
+      (set! (.-disabled add-btn) false)
       (om/set-state! owner [:input-text :url] "")
       (om/set-state! owner [:input-text :comment] "")
       (om/set-state! owner [:input-text :title] ""))))
@@ -60,10 +65,14 @@
         (om/set-state! owner [:input-text :modal-comment] "")))))
 
 (defn fetch-url-title [app owner url]
-  (let [package (str {:url url})]
+  (let [package (str {:url url})
+        fetch-btn (om/get-node owner "fetch-btn")]
     (go
+      (set! (.-innerHTML fetch-btn) "Fetching...")
+      (set! (.-disabled fetch-btn) true)
       (let [title (:title (<! (post-edn "bookmark/fetch-title" package)))]
-        (.log js/console title)
+        (set! (.-innerHTML fetch-btn) "Fetch!")
+        (set! (.-disabled fetch-btn) false)
         (om/set-state! owner [:input-text :title] title)))))
 
 
@@ -229,7 +238,8 @@
         ;; general notification container
         [:div#main-notification.notifcation-container
          [:span
-          [:a {:ref "center-notification"} (last (:notifications app))]]]
+          [:p {:ref "center-notification" :id "center-notification"} (last (:notifications app))]
+          ]]
 
         ;; container input
         [:div#input-form {:role "form"}
@@ -264,6 +274,8 @@
                              (put! notify "input missing")))}]
           [:span.input-group-btn
            [:button.btn.btn-default {:type "button"
+                                     :ref "fetch-btn"
+                                     :data-loading-text "Fetching ..."
                                      :on-click #(if (not (blank? (:url input-text)))
                                                   (do
                                                     (put! notify "fetching title ...")
@@ -272,7 +284,6 @@
             "Fetch!"]]]
 
          [:br]
-
          [:div.form-group
           [:label {:for "bookmark-comment-input"} "Comment"]
           [:textarea#bookmark-comment-input.form-control
@@ -290,8 +301,9 @@
                          (put! notify "bookmark added")
                          (add-bookmark app owner))
                        (put! notify "input missing"))
-          :type "button"}
-         "ADD"]
+          :type "button"
+          :ref "add-btn"}
+         "Add!"]
 
         ;; container header
 
