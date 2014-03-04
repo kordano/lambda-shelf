@@ -57,9 +57,9 @@
            :headers {"Content-Type" "application/edn"}
            :body (str (database/get-all-bookmarks))}))
 
-  (POST "/bookmark/tag" request
+  (POST "/bookmark/comment" request
         (let [data (-> request :body slurp read-string)
-              resp (database/tag-bookmark data)]
+              resp (database/comment-bookmark data)]
           {:status 200
            :headers {"Content-Type" "application/edn"}
            :body (str (database/get-all-bookmarks))}))
@@ -77,6 +77,6 @@
     (start port)))
 
 ;; --- TESTING ---
-#_(defonce server (start 8080))
+(defonce server (start 8080))
 #_(.stop server)
 #_(.start server)
