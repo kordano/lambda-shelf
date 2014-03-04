@@ -55,6 +55,62 @@
         (om/set-state! owner [:input-text :title] title)))))
 
 
+;; --- bookmark views ---
+
+(defn comments-view [{:keys [title votes comments id] :as bookmark} owner]
+  (reify
+    om/IRenderState
+    (render-state [this {:keys [incoming input-text] :as state}]
+      (html
+       [:div.modal.fade
+        {:tabindex -1
+         :id (str "comments-modal-" id)
+         :role "dialog"
+         :aria-labelledby (str "comments-modal-label-" id)
+         :aria-hidden true}
+        [:div.modal-dialog
+         [:div.modal-content
+          [:div.modal-header
+           [:button.close
+            {:type "button"
+             :data-dismiss "modal"
+             :aria-hidden true}
+            "\u00D7"]
+           [:h4.modal-title {:id (str "comments-modal-label-" id)} title]]
+
+          [:div.modal-body
+           [:ul.list-group
+            (map #(vec [:li.list-group-item %]) comments)]
+           [:br]
+           [:div.form-group
+            [:textarea.form-control
+             {:type "text"
+              :ref (str "new-comment-" id)
+              :rows 3
+              :value (:modal-comment input-text)
+              :style {:resize "vertical"}
+              :on-change #(handle-text-change % owner state :modal-comment)
+              :placeholder "What do you think?"}]]
+           [:button.btn.btn-primary.btn-xs
+            {:type "button"
+             :on-click #(do
+                          (go
+                              (>! incoming
+                                (<! (post-edn
+                                     "bookmark/comment"
+                                     (str {:id id
+                                           :comment (.-value (om/get-node owner (str "new-comment-" id)))})))))
+                            (om/set-state! owner [:input-text :modal-comment] ""))}
+
+            "add comment"]]
+
+          [:div.modal-footer
+           [:button.btn.btn-default
+            {:type "button"
+             :data-dismiss "modal"}
+            "Close"]]]]]))))
+
+
 (defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
   (let [comment-count (count comments)]
       (reify
@@ -64,12 +120,15 @@
            [:tr
             [:td.bookmark-title [:a {:href url} title]]
             [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
-            [:td.bookmark-comments [:a {:href "#"}
-                                    [:span.badge
-                                     {:data-toggle "tooltip"
-                                      :data-placement "left"
-                                      :title "Comments"}
-                                     comment-count]]]
+            [:td.bookmark-comments
+             [:a {:href "#"
+                  :data-toggle "modal"
+                  :data-target (str "#comments-modal-" id)}
+              [:span.badge
+               {:data-toggle "tooltip"
+                :data-placement "left"
+                :title "Comments"}
+               comment-count]]]
             [:td [:button.btn.btn-default.btn-sm
                   {:type "button"
                    :data-toggle "tooltip"
@@ -80,6 +139,7 @@
                                   (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
                   [:span votes]
                   " \u03BB"]]])))))
+
 
 (defn update-notification [app owner value]
   (let [notify-node (om/get-node owner "center-notification")]
@@ -100,7 +160,7 @@
       {:incoming (chan)
        :fetch (chan)
        :notify (chan)
-       :input-text {:url "" :title "" :comment ""}
+       :input-text {:url "" :title "" :comment "" :modal-comment ""}
        :page 0
        :page-size 8
        :counter 0})
@@ -147,18 +207,18 @@
         [:div#input-form {:role "form"}
          [:div.form-group
           [:label {:for "bookmark-url-input"} "Website"]
-         [:input#bookmark-url-input.form-control
-          {:type "url"
-           :ref "new-url"
-           :value (:url input-text)
-           :placeholder "URL"
-           :on-change #(handle-text-change % owner state :url)
-           :onKeyPress #(when (== (.-keyCode %) 13)
-                          (if (not (blank? (:url input-text)))
-                            (do
-                              (put! notify "Adding bookmark")
-                              (add-bookmark app owner))
-                            (put! notify "url input missing")))}]]
+          [:input#bookmark-url-input.form-control
+           {:type "url"
+            :ref "new-url"
+            :value (:url input-text)
+            :placeholder "URL"
+            :on-change #(handle-text-change % owner state :url)
+            :onKeyPress #(when (== (.-keyCode %) 13)
+                           (if (not (blank? (:url input-text)))
+                             (do
+                               (put! notify "Adding bookmark")
+                               (add-bookmark app owner))
+                             (put! notify "url input missing")))}]]
 
          [:label {:for "bookmark-title-input"} "Name"]
          [:div.input-group
@@ -214,7 +274,10 @@
          [:table.table.table-striped
           [:tbody
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                         {:init-state {:incoming incoming :notify notify}})]]]
+                         {:init-state {:incoming incoming :notify notify}})
+           (om/build-all comments-view (take page-size (drop (* page-size page) (:bookmarks app)))
+                         {:init-state {:incoming incoming :notify notify}})
+           ]]]
 
         [:ul.pager
          [:li.previous
