@@ -27,13 +27,6 @@
   (om/set-state! owner [:input-text type] (.. e -target -value)))
 
 
-(defn apply-to-entry [x k f]
-  "Apply function f to key k in entry x"
-  (fn [xs]
-    (vec
-     (map #(if (= x %) (assoc % k (f (k %))) %) xs))))
-
-
 (defn add-bookmark [app owner]
   "read input data, send it to server and update dom"
   (let [new-url (.-value (om/get-node owner "new-url"))
@@ -64,6 +57,7 @@
                      :comment new-comment}))))
         (om/set-state! owner [:input-text :modal-comment] "")))))
 
+
 (defn fetch-url-title [app owner url]
   (let [package (str {:url url})
         fetch-btn (om/get-node owner "fetch-btn")]
@@ -76,62 +70,6 @@
         (om/set-state! owner [:input-text :title] title)))))
 
 
-;; --- bookmark views ---
-
-(defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
-  (let [comment-count (count comments)]
-      (reify
-        om/IRenderState
-        (render-state [this {:keys [incoming input-text] :as state}]
-          (html
-           [:tr
-
-            [:td.bookmark-title
-             [:a {:href url :target "_blank"} title]
-             [:div.panel-collapse.collapse
-              {:id (str "comments-panel-" id)}
-              [:br]
-              [:ul.list-group
-               (map #(vec [:li.list-group-item %]) comments)]
-              [:br]
-              [:div.form-group
-               [:textarea.form-control
-                {:type "text"
-                 :ref (str "new-comment-" id)
-                 :rows 3
-                 :value (:modal-comment input-text)
-                 :style {:resize "vertical"}
-                 :on-change #(handle-text-change % owner state :modal-comment)
-                 :placeholder "What do you think?"}]]
-              [:button.btn.btn-primary.btn-xs
-               {:type "button"
-                :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
-               "add comment"]]]
-
-            [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
-
-            [:td.bookmark-comments
-             [:a {:href (str "#comments-panel-" id)
-                  :data-parent "#bookmark-table"
-                  :data-toggle "collapse"}
-              [:span.badge
-               {:data-toggle "tooltip"
-                :data-placement "left"
-                :title "Comments"}
-               comment-count]]]
-
-            [:td [:button.btn.btn-default.btn-sm
-                  {:type "button"
-                   :data-toggle "tooltip"
-                   :data-placement "left"
-                   :title "Votes"
-                   :on-click #(go
-                                (>! incoming
-                                  (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
-                  [:span votes]
-                  " \u03BB"]]])))))
-
-
 (defn update-notification [app owner value]
   (let [notify-node (om/get-node owner "center-notification")]
     (go
@@ -142,6 +80,94 @@
       (set! (.-opacity (.-style notify-node)) "0.0")
       (<! (timeout 500))
       (set! (.-visibility (.-style notify-node)) "hidden"))))
+
+
+;; --- views ---
+
+(defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
+  (let [comment-count (count comments)]
+      (reify
+        om/IRenderState
+        (render-state [this {:keys [incoming input-text] :as state}]
+          (html
+           [:tr
+            ;; title and collapsed comments
+            [:td
+             [:a {:href url :target "_blank"} title]
+
+             [:div.panel-collapse.collapse
+              {:id (str "comments-panel-" id)}
+
+              [:br]
+
+              [:ul.list-group
+               (map #(vec [:li.list-group-item %]) comments)]
+
+              [:br]
+
+              [:div.form-group
+               [:textarea.form-control
+                {:type "text"
+                 :ref (str "new-comment-" id)
+                 :rows 3
+                 :value (:modal-comment input-text)
+                 :style {:resize "vertical"}
+                 :on-change #(handle-text-change % owner state :modal-comment)
+                 :placeholder "What do you think?"}]]
+
+              [:button.btn.btn-primary.btn-xs
+               {:type "button"
+                :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
+               "add comment"]]]
+
+            [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
+
+            ;; comment counter and toggle
+            [:td
+             [:a {:href (str "#comments-panel-" id)
+                  :data-parent "#bookmark-table"
+                  :data-toggle "collapse"}
+              [:span.badge
+               {:data-toggle "tooltip"
+                :data-placement "left"
+                :title "Comments"}
+               comment-count]]]
+
+            ;; votes
+            [:td
+             [:button.btn.btn-default.btn-sm
+              {:type "button"
+               :data-toggle "tooltip"
+               :data-placement "left"
+               :title "Votes"
+               :on-click #(go
+                            (>! incoming
+                              (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
+              [:span votes]
+              " \u03BB"]]])))))
+
+
+(defn pagination-view [app {:keys [counter page page-size] :as owner}]
+  (let [page-count (/ counter page-size)]
+    [:div.text-center
+     [:ul.pagination
+      (if (= page 0)
+        [:li.disabled [:a {:href "#"} "\u00AB"]]
+        [:li [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page (dec page)))} "\u00AB"]])
+
+      (map
+       #(if (= % page)
+          (vec [:li.active
+                [:a {:href "#"} (inc %)
+                 [:span.sr-only "(current)"]]])
+          (vec [:li
+                [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page %))}
+                 (inc %)]]))
+       (range 0 page-count))
+
+      (if (= page (Math/floor page-count))
+        [:li.disabled [:a {:href "#"} "\u00BB"]]
+        [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]]))
 
 
 (defn bookmarks-view [app owner]
@@ -196,6 +222,7 @@
 
         ;; container input
         [:div#input-form {:role "form"}
+         ;; url
          [:div.form-group
           [:label {:for "bookmark-url-input"} "Website"]
           [:input#bookmark-url-input.form-control
@@ -211,6 +238,7 @@
                                (add-bookmark app owner))
                              (put! notify "url input missing")))}]]
 
+         ;; title input and fetch button
          [:label {:for "bookmark-title-input"} "Name"]
          [:div.input-group
           [:input#bookmark-title-input.form-control
@@ -237,6 +265,8 @@
             "Fetch!"]]]
 
          [:br]
+
+         ;; comment textarea
          [:div.form-group
           [:label {:for "bookmark-comment-input"} "Comment"]
           [:textarea#bookmark-comment-input.form-control
@@ -248,6 +278,7 @@
             :on-change #(handle-text-change % owner state :comment)
             :placeholder "Write about it ..."}]]]
 
+        ;; submit button
         [:button.btn.btn-primary
          {:on-click #(if (not (blank? (:url input-text)))
                        (do
@@ -259,37 +290,16 @@
          "Add!"]
 
         ;; container header
-        [:div
-         [:h2.page-header "Bookmarks"]
+        [:h2.page-header "Bookmarks"]
 
-         ;; container list
+         ;; bookmark list
+        [:div.table-responsive
+         [:table.table.table-striped
+          [:tbody#bookmark-table
+           (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
+                         {:init-state {:incoming incoming :notify notify}})]]]
 
-         [:div.table-responsive
-          [:table.table.table-striped
-           [:tbody#bookmark-table
-            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                          {:init-state {:incoming incoming :notify notify}})]]]
-
-         (let [page-count (/ counter page-size)]
-           [:div.text-center
-            [:ul.pagination
-             (if (= page 0)
-               [:li.disabled [:a {:href "#"} "\u00AB"]]
-               [:li [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page (dec page)))} "\u00AB"]])
-
-             (map
-              #(if (= % page)
-                 (vec [:li.active
-                       [:a {:href "#"} (inc %)
-                        [:span.sr-only "(current)"]]])
-                 (vec [:li
-                       [:a {:href "#" :on-click (fn [_] (om/set-state! owner :page %))}
-                        (inc %)]]))
-              (range 0 page-count))
-
-             (if (= page (Math/floor page-count))
-               [:li.disabled [:a {:href "#"} "\u00BB"]]
-               [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]])]]))))
+        (pagination-view app state)]))))
 
 
 (om/root bookmarks-view app-state {:target (. js/document (getElementById "bookmarks"))})
