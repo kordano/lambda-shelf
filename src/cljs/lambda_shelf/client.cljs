@@ -19,16 +19,25 @@
     (cemerick.austin.repls/cljs-repl repl-env))
 
 
-(def app-state (atom {:bookmarks nil
-                      :notifications [""]}))
+(def app-state (atom {:bookmarks nil}))
 
 
 (defn handle-text-change [e owner {:keys [input-text]} type]
   (om/set-state! owner [:input-text type] (.. e -target -value)))
 
 
+(defn missing-url-notification [app owner]
+  "Highlight missing url input field for a short time"
+  (go
+    (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
+    (set! (.-innerHTML (om/get-node owner "new-url-label")) "URL missing")
+    (<! (timeout 1300))
+    (.remove (.-classList (om/get-node owner "new-url-form")) "has-error")
+    (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
+
+
 (defn add-bookmark [app owner]
-  "read input data, send it to server and update dom"
+  "Collect input data, send it to server and update dom"
   (let [new-url (.-value (om/get-node owner "new-url"))
         new-title (.-value (om/get-node owner "new-title"))
         new-comment (.-value (om/get-node owner "new-comment"))
@@ -46,6 +55,7 @@
 
 
 (defn add-bookmark-comment [{:keys [id] :as bookmark} owner]
+  "Submit new comment and update dom"
   (let [new-comment (.-value (om/get-node owner (str "new-comment-" id)))]
     (if (= 0 (.-length (.trim new-comment)))
       (.log js/console "blank comment")
@@ -53,12 +63,12 @@
         (>! (om/get-state owner :incoming)
           (<! (post-edn
                "bookmark/comment"
-               (str {:id id
-                     :comment new-comment}))))
+               (str {:id id :comment new-comment}))))
         (om/set-state! owner [:input-text :modal-comment] "")))))
 
 
 (defn fetch-url-title [app owner url]
+  "Fetch title element of given site and write it to title input field"
   (let [package (str {:url url})
         fetch-btn (om/get-node owner "fetch-btn")]
     (go
@@ -70,21 +80,10 @@
         (om/set-state! owner [:input-text :title] title)))))
 
 
-(defn update-notification [app owner value]
-  (let [notify-node (om/get-node owner "center-notification")]
-    (go
-      (om/transact! app :notifications (fn [xs] (conj xs value)))
-      (set! (.-visibility (.-style notify-node)) "visible")
-      (set! (.-opacity (.-style notify-node)) "1.0")
-      (<! (timeout 2000))
-      (set! (.-opacity (.-style notify-node)) "0.0")
-      (<! (timeout 500))
-      (set! (.-visibility (.-style notify-node)) "hidden"))))
-
-
 ;; --- views ---
 
 (defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
+  "Bookmark entry in the data table"
   (let [comment-count (count comments)]
       (reify
         om/IRenderState
@@ -147,7 +146,8 @@
               " \u03BB"]]])))))
 
 
-(defn pagination-view [app {:keys [counter page page-size] :as owner}]
+(defn pagination-view [app owner {:keys [counter page page-size] :as state}]
+  "Simple paging with selectable pages"
   (let [page-count (/ counter page-size)]
     [:div.text-center
      [:ul.pagination
@@ -171,12 +171,12 @@
 
 
 (defn bookmarks-view [app owner]
+  "Overall view with data table and input fields"
   (reify
     om/IInitState
     (init-state [_]
       {:incoming (chan)
        :fetch (chan)
-       :notify (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment ""}
        :page 0
        :page-size 16
@@ -185,46 +185,37 @@
     om/IWillMount
     (will-mount [_]
       (let [incoming (om/get-state owner :incoming)
-            notify (om/get-state owner :notify)
             counter (om/get-state owner :counter)
             fetch (om/get-state owner :fetch)]
         (go
           (loop []
-            (let [[v c] (alts! [incoming notify fetch])]
+            (let [[v c] (alts! [incoming fetch])]
               (condp = c
-                notify (update-notification app owner v)
                 incoming (do
                            (om/transact! app :bookmarks (fn [_] (vec (sort-by :date > v))))
                            (om/set-state! owner :counter (count v)))
                 fetch (fetch-url-title app owner v))
               (recur))))
 
-        ;; welcome message
-        (go
-          (put! notify "Welcome to the shelf!"))
 
         ;; auto update bookmarks all 5 minutes
         (go
           (while true
             (.log js/console "Updating bookmarks ...")
             (>! incoming (<! (get-edn "bookmark/init")))
-            (<! (timeout 3000000))))))
+            (<! (timeout 300000))))))
 
 
     om/IRenderState
-    (render-state [this {:keys [incoming page page-size notify counter input-text fetch] :as state}]
+    (render-state [this {:keys [incoming page page-size counter input-text fetch] :as state}]
       (html
        [:div
-        ;; general notification container
-        [:div#main-notification.notifcation-container
-         [:span
-          [:p {:ref "center-notification" :id "center-notification"} (last (:notifications app))]]]
 
         ;; container input
         [:div#input-form {:role "form"}
          ;; url
-         [:div.form-group
-          [:label {:for "bookmark-url-input"} "Website"]
+         [:div.form-group {:ref "new-url-form"}
+          [:label.control-label {:for "bookmark-url-input" :ref "new-url-label"} "Website"]
           [:input#bookmark-url-input.form-control
            {:type "url"
             :ref "new-url"
@@ -233,10 +224,8 @@
             :on-change #(handle-text-change % owner state :url)
             :onKeyPress #(when (== (.-keyCode %) 13)
                            (if (not (blank? (:url input-text)))
-                             (do
-                               (put! notify "Adding bookmark")
-                               (add-bookmark app owner))
-                             (put! notify "url input missing")))}]]
+                             (add-bookmark app owner)
+                             (missing-url-notification app owner)))}]]
 
          ;; title input and fetch button
          [:label {:for "bookmark-title-input"} "Name"]
@@ -249,24 +238,20 @@
             :on-change #(handle-text-change % owner state :title)
             :onKeyPress #(when (== (.-keyCode %) 13)
                            (if (not (blank? (:url input-text)))
-                             (do
-                               (put! notify "Adding bookmark")
-                               (add-bookmark app owner))
-                             (put! notify "input missing")))}]
+                             (add-bookmark app owner)
+                             (missing-url-notification app owner)))}]
           [:span.input-group-btn
            [:button.btn.btn-default {:type "button"
                                      :ref "fetch-btn"
                                      :data-loading-text "Fetching ..."
                                      :on-click #(if (not (blank? (:url input-text)))
-                                                  (do
-                                                    (put! notify "fetching title ...")
-                                                    (put! fetch (:url input-text)))
-                                                  (put! notify "input missing"))}
+                                                  (put! fetch (:url input-text))
+                                                  (missing-url-notification app owner))}
             "Fetch!"]]]
 
          [:br]
 
-         ;; comment textarea
+         ;; Comment textarea
          [:div.form-group
           [:label {:for "bookmark-comment-input"} "Comment"]
           [:textarea#bookmark-comment-input.form-control
@@ -278,13 +263,10 @@
             :on-change #(handle-text-change % owner state :comment)
             :placeholder "Write about it ..."}]]]
 
-        ;; submit button
         [:button.btn.btn-primary
          {:on-click #(if (not (blank? (:url input-text)))
-                       (do
-                         (put! notify "bookmark added")
-                         (add-bookmark app owner))
-                       (put! notify "input missing"))
+                       (add-bookmark app owner)
+                       (missing-url-notification app owner))
           :type "button"
           :ref "add-btn"}
          "Add!"]
@@ -292,14 +274,18 @@
         ;; container header
         [:h2.page-header "Bookmarks"]
 
-         ;; bookmark list
+        ;; bookmark list
         [:div.table-responsive
          [:table.table.table-striped
           [:tbody#bookmark-table
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                         {:init-state {:incoming incoming :notify notify}})]]]
+                         {:init-state {:incoming incoming}})]]]
 
-        (pagination-view app state)]))))
+        (pagination-view app owner state)]))))
 
 
-(om/root bookmarks-view app-state {:target (. js/document (getElementById "bookmarks"))})
+;; initialize
+(om/root
+ bookmarks-view
+ app-state
+ {:target (. js/document (getElementById "bookmarks"))})
