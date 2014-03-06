@@ -1,0 +1,52 @@
+"Lisp is a programmable programming language." - John Foderaro, CACM, September 1991
+"If you give someone Fortran, he has Fortran. If you give someone Lisp, he has any language he pleases" - Guy Steele
+"Any sufficiently complicated C or Fortran program contains an ad hoc informally-specified bug-ridden slow implementation of half of Common Lisp." - Philip Greenspun
+"We were not out to win over the Lisp programmers; we were after the C++ programmers. We managed to drag a lot of them about halfway to Lisp." - Guy Steele, Java spec co-author
+"Lisp doesn't look any deader than usual to me." - David Thornley, reply to a question older than most languages
+"SQL, Lisp, and Haskell are the only programming languages that I've seen where one spends more time thinking than typing." - Philip Greenspun
+"When you choose a language, you're also choosing a community. The programmers you'll be able to hire to work on a Java project won't be as smart as the ones you could get to work on a project written in Python. And the quality of your hackers probably matters more than the language you choose. Though, frankly, the fact that good hackers prefer Python to Java should tell you something about the relative merits of those languages." - Philip Greenspun
+"It's next to impossible for java code to evolve gracefully because the language doesn't allow it. Welcome to the COBOL of the 21st century you little monkeys. At least you have your fancy IDEs that can do half the thinking for you. Now if only corporate could get rid of the monkeys all together and replace them with really smart IDEs." - Ilsa
+"The best thing to happen Java is for Sun to silently start deprecating it."
+"People 'get' types. They use them all the time. Telling someone he can't pound a nail with a banana doesn't much surprise him."
+"Dynamic types are stronger than static types, as they don't flee the field at runtime." - Brian Foote
+"Java is Diet Cobol" - Brian Foote
+"XML is lisp with [devil's] horns" - Brian Foote
+"Static types give me the same feeling of safety as the announcement that my seat cushion can be used as a floatation device." - Don Roberts
+"Eclipse has a 'guess the button' user interface." - James Noble
+"XML is like violence: if it doesn't work, use more."
+"XML is a giant step in no direction at all." - Erik Naggum
+"Structure is nothing if it is all you've got. Skeletons spook people if they try to walk around on their own; I really wonder why XML does not." - Erik Naggum
+"If computers get too powerful, we can organize them into a committee -- that will do them in." - Bradley's Bromide
+"Part of the inhumanity of the computer is that, once it is competently programmed and working smoothly, it is completely honest." - Isaac Asimov
+"Imagine if every Thursday your shoes exploded if you tied them the usual way. This happens to us all the time with computers, and nobody thinks of complaining." - Jef Raskin
+"The most likely way for the world to be destroyed, most experts agree, is by accident. That's where we come in; we're computer professionals. We cause accidents." - Nathaniel Borenstein
+"Programming today is a race between software engineers striving to build bigger and better idiot-proof programs, and the Universe trying to produce bigger and better idiots. So far, the Universe is winning." - Rich Cook
+"Computers are useless. They can only give you answers." - Pablo Picasso
+"If the automobile had followed the same development cycle as the computer, a Rolls-Royce would today cost $100, get a million miles per gallon, and explode once a year, killing everyone inside." - Robert X. Cringely
+"VB, much like generic beer and America's Funniest Home Videos is an enabling technology for stupid people. It allows stupid people to do stupid things on scale that they couldn't accomplish on their own. While using VB does not make you a dumb programmer, being a dumb programmer does make VB your weapon of choice. That is unless you really don't know what the fuck you are doing, then its PHP all the way." - Anonymous
+"C++: an octopus made by nailing extra legs to a dog." - Steve Taylor
+"When C++ is your hammer, everything starts to look like your thumb."
+"Linux is free as in Syphilis." - Anonymous Coward
+"I think it would be a tragic statement of the universe if Java was the last language that swept through." - James Gosling
+"We flew down weekly to meet with IBM, but they thought the way to measure software was the amount of code we wrote, when really the better the software, the fewer lines of code." - Bill Gates
+"The thing has all the elegance of COBOL combined with all the mindset of Java." - Ivan Krstic
+"If you want to be a programmer and if you don't know Lisp, you're missing out on something. The sad part is - most people do not even realize this." - Sriram Krishnan
+"I decided to try out Ruby to solve my problem. So I wrote a little code and all of a sudden I discovered that I was done." - Anonymous
+"In a language with pointers it is unlikely that a new programmer will ever get far enough to encounter any of the truly interesting problems" - Ian Bicking
+"About half of all design patterns out there [...] appear to be ways take perfectly natural design ideas and twist them to fit into someone's static type system: recipes for pounding square pegs into round holes" - Steve Yegge
+"Well, take it from an old hand: the only reason it would be easier to program in C is that you can't easily express complex problems in C, so you don't." - Erik Naggum (in comp.lang.lisp)
+"If everyone's going to reinvent a wheel, we might as well just provide the damn wheel as part of the stock system" - Dan Sugalski
+"Please don't fall into the trap of believing that I am terribly dogmatical about [the goto statement]. I have the uncomfortable feeling that others are making a religion out of it, as if the conceptual problems of programming could be solved by a single trick, by a simple form of coding discipline!" -- Edsger Dijkstra
+"XML is not a language in the sense of a programming language any more than sketches on a napkin are a language." -- Charles Simonyi
+"The object-oriented model makes it easy to build up programs by accretion. What this often means, in practice, is that it provides a structured way to write spaghetti code." -- Paul Graham
+"[The BLINK tag in HTML] was a joke, okay? If we thought it would actually be used, we wouldn't have written it!" -- Mark Andreessen
+"If we wish to count lines of code, we should not regard them as lines produced but as lines spent." -- Edsger Dijkstra
+"You can either have software quality or you can have pointer arithmetic, but you cannot have both at the same time." -- Bertrand Meyer
+"Objects can be classified scientifically into three major categories: those that don't work, those that break down and those that get lost." -- Russell Baker
+"If Python was the result of Lisp and C++ having a baby, Ruby is the result of Perl and Smalltalk having a baby." -- MeowMeow Jones, 11/8/2001 on slashdot.
+"Ah, the "Birds fly. Except penguins, kiwis, ostriches,.." problem" -- Hugh Eng
+"C for Sinking, Java for Drinking, Smalltalk for Thinking. ...and Power to the Penguin!" -- Travis Griggs
+"C++: The power, elegance and simplicity of a hand grenade."
+"I invented the term Object-Oriented, and I can tell you I did not have C++ in mind." -- Alan Kay
+"There are only two things wrong with C++: The initial concept and the implementation." -- Bertrand Meyer
+"The thing that I really hate about Smalltalk, though, is the fact that every time I wish C++ or Java did something differently it turns out that Smalltalk does it the way I want it to. I've never even used Smalltalk on a real project. I just learned it so that I could read source code, now I keep running into things that would be easier if I were using it. It's really annoying." -- Phil Goodwin
