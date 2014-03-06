@@ -6,6 +6,7 @@
             [compojure.core :refer (GET POST defroutes)]
             [ring.adapter.jetty :refer [run-jetty]]
             [clojure.java.io :as io]
+            [lambda-shelf.quotes :as quotes]
             [lambda-shelf.database :as database]))
 
 
@@ -26,7 +27,8 @@
   (io/resource "public/index.html")
   []
   [:body] (enlive/append
-           (enlive/html [:script (browser-connected-repl-js)])))
+           (enlive/html [:script (browser-connected-repl-js)]))
+  [:.navbar] (enlive/after (enlive/html [:div.container [:div.well (quotes/random-quote)]])))
 
 
 (defroutes site
