@@ -10,7 +10,6 @@
                    [cljs.core.async.macros :refer [go]]))
 
 
-(.log js/console "HAIL TO THE LAMBDA!")
 
 ;; fire up repl
 #_(do
@@ -19,7 +18,6 @@
     (cemerick.austin.repls/cljs-repl repl-env))
 
 
-(def app-state (atom {:bookmarks nil}))
 
 
 (defn handle-text-change [e owner {:keys [input-text]} type]
@@ -170,6 +168,10 @@
         [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]]))
 
 
+
+
+
+
 (defn bookmarks-view [app owner]
   "Overall view with data table and input fields"
   (reify
@@ -197,11 +199,9 @@
                 fetch (fetch-url-title app owner v))
               (recur))))
 
-
         ;; auto update bookmarks all 5 minutes
         (go
           (while true
-            (.log js/console "Updating bookmarks ...")
             (>! incoming (<! (get-edn "bookmark/init")))
             (<! (timeout 300000))))))
 
@@ -282,10 +282,3 @@
                          {:init-state {:incoming incoming}})]]]
 
         (pagination-view app owner state)]))))
-
-
-;; initialize
-(om/root
- bookmarks-view
- app-state
- {:target (. js/document (getElementById "bookmarks"))})
