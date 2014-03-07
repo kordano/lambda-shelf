@@ -27,8 +27,7 @@
   (io/resource "public/index.html")
   []
   [:body] (enlive/append
-           (enlive/html [:script (browser-connected-repl-js)]))
-  [:.navbar] (enlive/after (enlive/html [:div.container [:div.well (quotes/random-quote)]])))
+           (enlive/html [:script (browser-connected-repl-js)])))
 
 
 (defroutes site
@@ -77,6 +76,7 @@
   (database/initialize-databases)
   (let [port (Integer. (or (System/getenv "PORT") "8080"))]
     (start port)))
+
 
 ;; --- TESTING ---
 (defonce server (start 8080))
