@@ -1,0 +1,26 @@
+/* design voting*/
+.arrow {
+   height: 0;
+   width: 0;
+   border: 6px solid transparent;
+}
+
+.arrow.up {
+   border-bottom-color: #7070aa;
+}
+.arrow.up:hover {
+   border-bottom-color: #50afde;
+   cursor: pointer;
+}
+
+.arrow.down {
+   border-top-color: #7070aa;
+}
+.arrow.down:hover {
+   border-top-color: #50afde;
+   cursor: pointer;
+}
+
+#login-panel {
+    margin-top: 100px;
+}
