@@ -16,8 +16,8 @@
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  [org.clojure/java.jdbc "0.3.3"]
                  [postgresql "9.1-901-1.jdbc4"]
+                 [ring "1.2.1"]
                  [com.ashafa/clutch "0.4.0-RC1"]
-                 [ring "1.2.0"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
                  [om "0.5.0"]
@@ -31,16 +31,18 @@
 
   :repl-options {:init-ns lambda-shelf.core}
 
+
   :main ^:skip-aot lambda-shelf.core
 
   :uberjar-name "lambda-shelf-standalone.jar"
 
   ;;:hooks [leiningen.cljsbuild]
 
+  :profiles {:uberjar {:aot :all}}
+
   :cljsbuild
   {:builds
    [{:source-paths ["src/cljs"]
      :compiler
      {:output-to "resources/public/js/main.js"
-      :optimizations :simple}}]}
-  :profiles {:uberjar {:aot :all}})
+      :optimizations :simple}}]})
