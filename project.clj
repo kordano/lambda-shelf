@@ -20,10 +20,9 @@
                  [ring "1.2.0"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
-                 [om "0.5.1"]
+                 [om "0.5.0"]
                  [com.facebook/react "0.9.0"]
                  [hiccups "0.3.0"]
-                 [http-kit "2.1.17"]
                  [sablono "0.2.8"]]
 
   :plugins [[lein-cljsbuild "1.0.1"]
@@ -32,7 +31,7 @@
 
   :repl-options {:init-ns lambda-shelf.core}
 
-  :main lambda-shelf.core
+  :main ^:skip-aot lambda-shelf.core
 
   :uberjar-name "lambda-shelf-standalone.jar"
 
@@ -43,4 +42,5 @@
    [{:source-paths ["src/cljs"]
      :compiler
      {:output-to "resources/public/js/main.js"
-      :optimizations :simple}}]})
+      :optimizations :simple}}]}
+  :profiles {:uberjar {:aot :all}})
