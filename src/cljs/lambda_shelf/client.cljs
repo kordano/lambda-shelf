@@ -19,7 +19,6 @@
 
 
 
-
 (defn handle-text-change [e owner {:keys [input-text]} type]
   (om/set-state! owner [:input-text type] (.. e -target -value)))
 
@@ -52,16 +51,16 @@
       (om/set-state! owner [:input-text :title] ""))))
 
 
-(defn add-bookmark-comment [{:keys [id] :as bookmark} owner]
+(defn add-bookmark-comment [{:keys [_id] :as bookmark} owner]
   "Submit new comment and update dom"
-  (let [new-comment (.-value (om/get-node owner (str "new-comment-" id)))]
+  (let [new-comment (.-value (om/get-node owner (str "new-comment-" _id)))]
     (if (= 0 (.-length (.trim new-comment)))
       (.log js/console "blank comment")
       (go
         (>! (om/get-state owner :incoming)
           (<! (post-edn
                "bookmark/comment"
-               (str {:id id :comment new-comment}))))
+               (str {:_id _id :comment new-comment}))))
         (om/set-state! owner [:input-text :modal-comment] "")))))
 
 
@@ -80,7 +79,7 @@
 
 ;; --- views ---
 
-(defn bookmark-view [{:keys [title url date id votes comments] :as bookmark} owner]
+(defn bookmark-view [{:keys [title url date _id votes comments] :as bookmark} owner]
   "Bookmark entry in the data table"
   (let [comment-count (count comments)]
       (reify
@@ -93,7 +92,7 @@
              [:a {:href url :target "_blank"} title]
 
              [:div.panel-collapse.collapse
-              {:id (str "comments-panel-" id)}
+              {:id (str "comments-panel-" _id)}
 
               [:br]
 
@@ -105,7 +104,7 @@
               [:div.form-group
                [:textarea.form-control
                 {:type "text"
-                 :ref (str "new-comment-" id)
+                 :ref (str "new-comment-" _id)
                  :rows 3
                  :value (:modal-comment input-text)
                  :style {:resize "vertical"}
@@ -121,7 +120,7 @@
 
             ;; comment counter and toggle
             [:td
-             [:a {:href (str "#comments-panel-" id)
+             [:a {:href (str "#comments-panel-" _id)
                   :data-parent "#bookmark-table"
                   :data-toggle "collapse"}
               [:span.badge
@@ -139,7 +138,7 @@
                :title "Votes"
                :on-click #(go
                             (>! incoming
-                              (<! (post-edn "bookmark/vote" (str {:id id :upvote true})))))}
+                              (<! (post-edn "bookmark/vote" (str {:_id _id :upvote true})))))}
               [:span votes]
               " \u03BB"]]])))))
 
@@ -194,7 +193,8 @@
             (let [[v c] (alts! [incoming fetch])]
               (condp = c
                 incoming (do
-                           (om/transact! app :bookmarks (fn [_] (vec (sort-by :date > v))))
+                           (om/transact! app :bookmarks (fn [_] (vec (sort-by :date >
+                                                                             (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
                            (om/set-state! owner :counter (count v)))
                 fetch (fetch-url-title app owner v))
               (recur))))
