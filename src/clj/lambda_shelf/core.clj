@@ -5,6 +5,7 @@
             [compojure.route :refer (resources)]
             [compojure.handler :refer [site]]
             [compojure.core :refer (GET POST defroutes)]
+            [ring.adapter.jetty :refer [run-jetty]]
             [clojure.java.io :as io]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [lambda-shelf.quotes :as quotes]
@@ -69,8 +70,11 @@
   (GET "/*" req (page)))
 
 ;; http-kit server
-(defn start [port]
+(defn start-httpkit [port]
   (run-server (site #'all-routes) {:port port}))
+
+(defn start [port]
+  (run-jetty #'site {:port port :join? false}))
 
 (defn -main []
   (database/initialize-databases)
@@ -79,6 +83,6 @@
 
 
 ;; --- TESTING ---
-#_(defonce server (start 8080))
+(defonce server (start 8080))
 #_(.stop server)
 #_(.start server)
