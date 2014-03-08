@@ -3,9 +3,10 @@
   (:require [cemerick.austin.repls :refer (browser-connected-repl-js)]
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer (resources)]
+            [compojure.handler :refer [site]]
             [compojure.core :refer (GET POST defroutes)]
-            [ring.adapter.jetty :refer [run-jetty]]
             [clojure.java.io :as io]
+            [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.database :as database]))
 
@@ -30,7 +31,7 @@
            (enlive/html [:script (browser-connected-repl-js)])))
 
 
-(defroutes site
+(defroutes all-routes
   (resources "/")
 
   (GET "/bookmark/init" []
@@ -67,10 +68,9 @@
 
   (GET "/*" req (page)))
 
-
+;; http-kit server
 (defn start [port]
-  (run-jetty #'site {:port port :join? false}))
-
+  (run-server (site #'all-routes) {:port port}))
 
 (defn -main []
   (database/initialize-databases)
@@ -79,6 +79,6 @@
 
 
 ;; --- TESTING ---
-(defonce server (start 8080))
+#_(defonce server (start 8080))
 #_(.stop server)
 #_(.start server)
