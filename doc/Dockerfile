@@ -28,4 +28,4 @@ RUN git clone https://github.com/kordano/lambda-shelf.git /usr/local/src/lambda-
 EXPOSE 8080
 
 # create uberjar with leiningen
-RUN cd /usr/local/src/nidaba; lein uberjar
+RUN cd /usr/local/src/lambda-shelf; lein uberjar; lein cljsbuild once
