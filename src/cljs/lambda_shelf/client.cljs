@@ -19,8 +19,8 @@
 
 
 
-(defn handle-text-change [e owner {:keys [input-text]} type]
-  (om/set-state! owner [:input-text type] (.. e -target -value)))
+(defn handle-text-change [e owner {:keys [input-text]} input-type]
+  (om/set-state! owner [:input-text input-type] (.. e -target -value)))
 
 
 (defn missing-url-notification [app owner]
@@ -143,9 +143,9 @@
               " \u03BB"]]])))))
 
 
-(defn pagination-view [app owner {:keys [counter page page-size] :as state}]
+(defn pagination-view [app owner {:keys [page page-size] :as state}]
   "Simple paging with selectable pages"
-  (let [page-count (/ counter page-size)]
+  (let [page-count (/ (count (:bookmarks app)) page-size)]
     [:div.text-center
      [:ul.pagination
       (if (= page 0)
@@ -178,24 +178,40 @@
     (init-state [_]
       {:incoming (chan)
        :fetch (chan)
-       :input-text {:url "" :title "" :comment "" :modal-comment ""}
+       :search (chan)
+       :input-text {:url "" :title "" :comment "" :modal-comment "" :search ""}
        :page 0
        :page-size 16
-       :counter 0})
+       })
 
     om/IWillMount
     (will-mount [_]
       (let [incoming (om/get-state owner :incoming)
-            counter (om/get-state owner :counter)
-            fetch (om/get-state owner :fetch)]
+            fetch (om/get-state owner :fetch)
+            search (om/get-state owner :search)]
         (go
           (loop []
-            (let [[v c] (alts! [incoming fetch])]
+            (let [[v c] (alts! [incoming fetch search])]
               (condp = c
-                incoming (do
-                           (om/transact! app :bookmarks (fn [_] (vec (sort-by :date >
-                                                                             (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
-                           (om/set-state! owner :counter (count v)))
+                search (om/transact!
+                        app
+                        :bookmarks
+                        (fn [xs]
+                          (vec
+                           (sort-by :date >
+                                    (remove
+                                     #(and (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title))))
+                                           (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url)))))
+                                     xs)))))
+
+                incoming (om/transact!
+                          app
+                          :bookmarks
+                          (fn [_]
+                            (vec
+                             (sort-by :date >
+                                      (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
+
                 fetch (fetch-url-title app owner v))
               (recur))))
 
@@ -207,7 +223,7 @@
 
 
     om/IRenderState
-    (render-state [this {:keys [incoming page page-size counter input-text fetch] :as state}]
+    (render-state [this {:keys [incoming search page page-size input-text fetch] :as state}]
       (html
        [:div
 
@@ -272,7 +288,23 @@
          "Add!"]
 
         ;; container header
-        [:h2.page-header "Bookmarks"]
+        [:div.row
+         [:h2.page-header "Bookmarks"
+          [:div.input-group.col-md-2.pull-right
+           [:input.form-control.col-md-2.pull-right
+            {:type "search"
+             :value (:search input-text)
+             :placeholder "Search..."
+             :on-change #(handle-text-change % owner state :search)
+             :onKeyPress #(when (== (.-keyCode %) 13)
+                            (if (not (blank? (:search input-text)))
+                              (let [current-time (.now js/Date)]
+                                  (go
+                                    (>! incoming (<! (get-edn "bookmark/init")))
+                                    (.log js/console (- (.now js/Date) current-time))
+                                    (>! search (:search input-text))))
+                              (go
+                                (>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
@@ -282,3 +314,9 @@
                          {:init-state {:incoming incoming}})]]]
 
         (pagination-view app owner state)]))))
+
+
+#_(om/root
+   bookmarks-view
+   app-state
+   {:target (. js/document (getElementById "main"))})
