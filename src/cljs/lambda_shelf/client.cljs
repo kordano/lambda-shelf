@@ -181,8 +181,7 @@
        :search (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment "" :search ""}
        :page 0
-       :page-size 16
-       })
+       :page-size 16})
 
     om/IWillMount
     (will-mount [_]
@@ -193,16 +192,17 @@
           (loop []
             (let [[v c] (alts! [incoming fetch search])]
               (condp = c
-                search (om/transact!
-                        app
-                        :bookmarks
-                        (fn [xs]
-                          (vec
-                           (sort-by :date >
-                                    (remove
-                                     #(and (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title))))
-                                           (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url)))))
-                                     xs)))))
+                search (do (om/transact!
+                            app
+                            :bookmarks
+                            (fn [xs]
+                              (vec
+                               (sort-by :date >
+                                        (remove
+                                         #(and (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title))))
+                                               (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url)))))
+                                         xs)))))
+                           (om/set-state! owner :page 0))
 
                 incoming (om/transact!
                           app
@@ -298,11 +298,9 @@
              :on-change #(handle-text-change % owner state :search)
              :onKeyPress #(when (== (.-keyCode %) 13)
                             (if (not (blank? (:search input-text)))
-                              (let [current-time (.now js/Date)]
-                                  (go
-                                    (>! incoming (<! (get-edn "bookmark/init")))
-                                    (.log js/console (- (.now js/Date) current-time))
-                                    (>! search (:search input-text))))
+                              (go
+                                (>! incoming (<! (get-edn "bookmark/init")))
+                                (>! search (:search input-text)))
                               (go
                                 (>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
 
