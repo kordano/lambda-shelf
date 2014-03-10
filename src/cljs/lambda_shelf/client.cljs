@@ -192,15 +192,20 @@
           (loop []
             (let [[v c] (alts! [incoming fetch search])]
               (condp = c
-                search (do (om/transact!
+                search (do
+                         (om/transact!
                             app
                             :bookmarks
                             (fn [xs]
                               (vec
                                (sort-by :date >
                                         (remove
-                                         #(and (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title))))
-                                               (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url)))))
+                                         #(and (if (nil? (% :title))
+                                                 true
+                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
+                                               (if (nil? (% :url))
+                                                 true
+                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
                                          xs)))))
                            (om/set-state! owner :page 0))
 
