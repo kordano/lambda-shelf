@@ -1,22 +1,10 @@
-(ns lambda-shelf.client
-  (:require [hiccups.runtime :as hiccupsrt]
-            [clojure.browser.repl]
-            [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
+(ns lambda-shelf.bookmark
+  (:require [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
             [sablono.core :as html :refer-macros [html]]
             [lambda-shelf.communicator :refer [post-edn get-edn]])
-  (:require-macros [hiccups.core :as hiccups]
-                   [cljs.core.async.macros :refer [go]]))
-
-
-
-;; fire up repl
-#_(do
-    (def repl-env (reset! cemerick.austin.repls/browser-repl-env
-                         (cemerick.austin/repl-env)))
-    (cemerick.austin.repls/cljs-repl repl-env))
-
+  (:require-macros [cljs.core.async.macros :refer [go]]))
 
 
 (defn handle-text-change [e owner {:keys [input-text]} input-type]
@@ -165,10 +153,6 @@
       (if (= page (Math/floor page-count))
         [:li.disabled [:a {:href "#"} "\u00BB"]]
         [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]]))
-
-
-
-
 
 
 (defn bookmarks-view [app owner]
