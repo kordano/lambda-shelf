@@ -72,6 +72,7 @@
   (run-jetty #'site {:port port :join? false}))
 
 (defn -main []
+  (warehouse/init-db)
   (let [port (Integer. (or (System/getenv "PORT") "8080"))]
     (start port)))
 
