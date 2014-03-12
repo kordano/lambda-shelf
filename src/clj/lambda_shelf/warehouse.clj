@@ -42,6 +42,3 @@
 
 
 ;; --- testing vars ---
-
-#_(init-db)
-(println (get-all-bookmarks))
