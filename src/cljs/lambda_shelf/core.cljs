@@ -40,7 +40,7 @@
                 :title "Import bookmarks"}
             [:span.glyphicon.glyphicon-import]]]
           [:li
-           [:a {:href "/bookmark/export"
+           [:a {:href "/bookmark/export.edn"
                 :data-toggle "tooltip"
                 :data-placement "bottom"
                 :title "Export bookmarks"}
