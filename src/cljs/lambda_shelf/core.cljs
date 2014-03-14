@@ -31,14 +31,30 @@
         [:div.navbar-header
          [:a.navbar-brand {:href "#"}
         "The Shelf"]]
-        [:div.collapse.navbar-collapse.navbar-right
-         [:button.btn.btn-default.navbar-btn
-          {:type "button"
-           :on-click (fn [_] ((om/root
-                              login-view
-                              @app
-                              {:target (. js/document (getElementById "main"))})))}
-          "Sign in"]]]))))
+        [:div.collapse.navbar-collapse
+         [:ul.nav.navbar-nav.navbar-right
+          [:li
+           [:a {:href "#"
+                :data-toggle "tooltip"
+                :data-placement "bottom"
+                :title "Import bookmarks"}
+            [:span.glyphicon.glyphicon-import]]]
+          [:li
+           [:a {:href "/bookmark/export"
+                :data-toggle "tooltip"
+                :data-placement "bottom"
+                :title "Export bookmarks"}
+            [:span.glyphicon.glyphicon-export]]]
+          [:li
+           [:a {:href "#"
+                :data-toggle "tooltip"
+                :data-placement "bottom"
+                :title "Sign in"
+                 :on-click (fn [_] ((om/root
+                                    login-view
+                                    @app
+                                    {:target (. js/document (getElementById "main"))})))}
+                [:span.glyphicon.glyphicon-user]]]]]]))))
 
 
 (om/root

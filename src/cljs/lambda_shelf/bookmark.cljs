@@ -55,18 +55,22 @@
 (defn fetch-url-title [app owner url]
   "Fetch title element of given site and write it to title input field"
   (let [package (str {:url url})
-        fetch-btn (om/get-node owner "fetch-btn")]
+        fetch-btn (om/get-node owner "fetch-btn")
+        title-input (om/get-node owner "title-group")]
     (go
       (set! (.-innerHTML fetch-btn) "Fetching...")
+      (.add (.-classList title-input) "csspinner")
+      (.add (.-classList title-input) "traditional")
       (set! (.-disabled fetch-btn) true)
       (let [title (:title (<! (post-edn "bookmark/fetch-title" package)))]
         (set! (.-innerHTML fetch-btn) "Fetch!")
+        (.remove (.-classList title-input) "csspinner")
+        (.remove (.-classList title-input) "traditional")
         (set! (.-disabled fetch-btn) false)
         (om/set-state! owner [:input-text :title] title)))))
 
 
 ;; --- views ---
-
 (defn bookmark-view [{:keys [title url date _id votes comments] :as bookmark} owner]
   "Bookmark entry in the data table"
   (let [comment-count (count comments)]
@@ -234,7 +238,7 @@
 
          ;; title input and fetch button
          [:label {:for "bookmark-title-input"} "Name"]
-         [:div.input-group
+         [:div.input-group {:ref "title-group"}
           [:input#bookmark-title-input.form-control
            {:type "text"
             :ref "new-title"
@@ -279,6 +283,7 @@
         ;; container header
         [:div.row
          [:h2.page-header "Bookmarks"
+
           [:div.input-group.col-md-2.pull-right
            [:input.form-control.col-md-2.pull-right
             {:type "search"
