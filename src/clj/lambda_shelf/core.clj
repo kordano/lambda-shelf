@@ -38,6 +38,11 @@
         :headers {"Content-Type" "application/edn"}
         :body (str (warehouse/get-all-bookmarks))})
 
+  (GET "/bookmark/export.edn" []
+       {:status 200
+        :headers {"Content-Type" "application/edn"}
+        :body (str (warehouse/get-all-bookmarks))})
+
   (POST "/bookmark/add" request
         (let [data (-> request :body slurp read-string)
               resp (warehouse/insert-bookmark (update-in data [:title] #(if (= "" %) (fetch-url-title (:url data)) %)))]
