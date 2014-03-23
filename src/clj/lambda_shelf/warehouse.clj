@@ -1,7 +1,6 @@
 (ns lambda-shelf.warehouse
   (:refer-clojure :exclude [assoc! conj! dissoc! ==])
   (:require [clojure.core :as core]
-            [lambda-shelf.database :as old]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :as cdb :refer [with-db get-database get-document put-document update-document all-documents]]))
 
@@ -39,6 +38,3 @@
   (with-db (database-url "bookmark")
     (let [ids (map #(:id %) (all-documents))]
       (mapv #(dissoc (get-document %) :_rev) ids))))
-
-
-;; --- testing vars ---
