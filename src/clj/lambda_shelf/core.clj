@@ -4,7 +4,7 @@
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer (resources)]
             [compojure.core :refer (GET POST defroutes)]
-            [ring.adapter.jetty :refer [run-jetty]]
+            [org.httpkit.server :as httpkit]
             [clojure.java.io :as io]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]))
@@ -74,7 +74,7 @@
 
 
 (defn start [port]
-  (run-jetty #'site {:port port :join? false}))
+  (httpkit/run-server site {:port port :join? false}))
 
 (defn -main []
   (warehouse/init-db)

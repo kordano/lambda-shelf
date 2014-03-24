@@ -14,17 +14,18 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2156"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
-                 [ring "1.2.1"]
+                 [ring "1.2.2"]
                  [com.ashafa/clutch "0.4.0-RC1"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
-                 [om "0.5.0"]
-                 [com.facebook/react "0.9.0"]
+                 [om "0.5.3"]
+                 [http-kit "2.1.18"]
+                 [com.facebook/react "0.9.0.1"]
                  [hiccups "0.3.0"]
-                 [sablono "0.2.8"]]
+                 [sablono "0.2.14"]]
 
   :plugins [[lein-cljsbuild "1.0.1"]
-            [com.cemerick/austin "0.1.3"]
+            [com.cemerick/austin "0.1.4"]
             [lein-ancient "0.5.4"]]
 
   :repl-options {:init-ns lambda-shelf.core}
