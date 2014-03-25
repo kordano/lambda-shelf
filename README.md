@@ -1,14 +1,14 @@
 # lambda-shelf
 
-A basic reddit-like link collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, ring for backend server and postgresql as backend storage.
+A basic reddit-like link collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, http-kit for backend server and couchdb as backend storage.
 
-Enjoy live application on [heroku](https://stark-lake-6076.herokuapp.com/ "Lambda Shelf").
+Enjoy live application [here](http://shelf.polyc0l0r.net/ "Lambda Shelf").
 
 ## Usage
 
-A [postgresql](http://www.postgresql.org/download/ "postgresql installation") instance is required.
+A [couchdb](http://couchdb.apache.org "couchdb site") instance is required.
 
-Adjust database credentials in [database.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/database.clj "database file"). Refer to [clojure.java.jdbc](https://github.com/clojure/java.jdbc "jdbc") for configuration.
+Adjust database credentials in [warehouse.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/warehouse.clj "warehouse file"). Refer to [clutch](https://github.com/clojure-clutch/clutch "clutch) for configuration.
 
 Compile Clojurescript
 ```
@@ -21,6 +21,10 @@ lein run
 ```
 
 Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
+
+# Deployment with Docker
+
+A configured Dockerfile can be found [here](https://github.com/kordano/docker-shelf "docker-shelf).
 
 ## License
 
