@@ -2,9 +2,9 @@
   (:gen-class :main true)
   (:require [cemerick.austin.repls :refer (browser-connected-repl-js)]
             [net.cgrand.enlive-html :as enlive]
-            [compojure.route :refer (resources)]
-            [compojure.core :refer (GET POST defroutes)]
-            [org.httpkit.server :as httpkit]
+            [compojure.route :refer [resources]]
+            [compojure.core :refer [GET POST defroutes]]
+            [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [clojure.java.io :as io]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]))
@@ -21,6 +21,33 @@
       first
       :content
       first))
+
+
+(defn dispatch-bookmark [{:keys [topic data]}]
+  (case topic
+    :get-all (warehouse/get-all-bookmarks)
+    :fetch-title {:title (fetch-url-title (:url data))}
+    :add (do (warehouse/insert-bookmark
+              (update-in
+               data
+               [:title]
+               #(if (= "" %) (fetch-url-title (:url data)) %)))
+             (warehouse/get-all-bookmarks))
+    :vote (do (warehouse/vote-bookmark data)
+              (warehouse/get-all-bookmarks))
+    :comment (do (warehouse/comment-bookmark data)
+                 (warehouse/get-all-bookmarks))
+    "DEFAULT"))
+
+
+(defn bookmark-handler [request]
+  (with-channel request channel
+    (on-close channel
+              (fn [status]
+                (println "channel closed: " status)))
+    (on-receive channel
+                (fn [data]
+                  (send! channel (dispatch-bookmark data))))))
 
 
 (enlive/deftemplate page
@@ -43,9 +70,15 @@
         :headers {"Content-Type" "application/edn"}
         :body (str (warehouse/get-all-bookmarks))})
 
+  (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
+
   (POST "/bookmark/add" request
         (let [data (-> request :body slurp read-string)
-              resp (warehouse/insert-bookmark (update-in data [:title] #(if (= "" %) (fetch-url-title (:url data)) %)))]
+              resp (warehouse/insert-bookmark
+                    (update-in
+                     data
+                     [:title]
+                     #(if (= "" %) (fetch-url-title (:url data)) %)))]
           {:status 200
            :headers {"Content-Type" "application/edn"}
            :body (str (warehouse/get-all-bookmarks))}))
@@ -73,16 +106,19 @@
   (GET "/*" req (page)))
 
 
-(defn start [port]
-  (httpkit/run-server site {:port port :join? false}))
+(defn start-server [port]
+  (do
+    (println (str "Starting server @ port" port))
+    (run-server site {:port port :join? false})))
+
 
 (defn -main []
   (warehouse/init-db)
   (let [port (Integer. (or (System/getenv "PORT") "8080"))]
-    (start port)))
+    (start-server port)))
 
 
 ;; --- TESTING ---
-#_(defonce server (start 8080))
-#_(.stop server)
+#_(def server (start-server 8080))
+#_(server)
 #_(.start server)
