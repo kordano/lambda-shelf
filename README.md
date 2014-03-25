@@ -22,7 +22,7 @@ lein run
 
 Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
 
-# Deployment with Docker
+## Deployment with Docker
 
 A configured Dockerfile can be found [here](https://github.com/kordano/docker-shelf "docker-shelf).
 
