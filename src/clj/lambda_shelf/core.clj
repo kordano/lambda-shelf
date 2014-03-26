@@ -108,7 +108,7 @@
 
 (defn start-server [port]
   (do
-    (println (str "Starting server @ port" port))
+    (println (str "Starting server @ port " port))
     (run-server site {:port port :join? false})))
 
 
