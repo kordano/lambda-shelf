@@ -23,8 +23,10 @@
       first))
 
 
-(defn dispatch-bookmark [{:keys [topic data]}]
+
+(defn dispatch-bookmark [{:keys [topic data] :as incoming}]
   (case topic
+    :greeting {:data "Greetings Master!" :topic :greeting}
     :get-all (warehouse/get-all-bookmarks)
     :fetch-title {:title (fetch-url-title (:url data))}
     :add (do (warehouse/insert-bookmark
@@ -47,7 +49,7 @@
                 (println "channel closed: " status)))
     (on-receive channel
                 (fn [data]
-                  (send! channel (dispatch-bookmark data))))))
+                  (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
 (enlive/deftemplate page
