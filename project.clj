@@ -2,7 +2,7 @@
 
   :description "bookmark app"
 
-  :url "http://example.com/FIXME"
+  :url "http://github.com/kordano/lambda-shelf"
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -24,7 +24,7 @@
                  [hiccups "0.3.0"]
                  [sablono "0.2.14"]]
 
-  :plugins [[lein-cljsbuild "1.0.1"]
+  :plugins [[lein-cljsbuild "1.0.2"]
             [com.cemerick/austin "0.1.4"]
             [lein-ancient "0.5.4"]]
 
