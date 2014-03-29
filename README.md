@@ -8,7 +8,7 @@ Enjoy live application [here](http://shelf.polyc0l0r.net/ "Lambda Shelf").
 
 A [couchdb](http://couchdb.apache.org "couchdb site") instance is required.
 
-Adjust database credentials in [warehouse.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/warehouse.clj "warehouse file"). Refer to [clutch](https://github.com/clojure-clutch/clutch "clutch) for configuration.
+Adjust database credentials in [warehouse.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/warehouse.clj "warehouse file"). Refer to [clutch](https://github.com/clojure-clutch/clutch "clutch") for configuration.
 
 Compile Clojurescript
 ```
