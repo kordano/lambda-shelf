@@ -4,10 +4,36 @@
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer [resources]]
             [compojure.core :refer [GET POST defroutes]]
+            [geschichte.repo :as repo]
+            [geschichte.sync :refer [server-peer sync! wire-stage]]
+            [geschichte.platform :refer [create-http-kit-handler!]]
+            [konserve.store :refer [new-mem-store]]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [clojure.java.io :as io]
             [lambda-shelf.quotes :as quotes]
-            [lambda-shelf.warehouse :as warehouse]))
+            [lambda-shelf.warehouse :as warehouse]
+            [clojure.core.async :refer [<!! >!!]]))
+
+
+(def store (<!! (new-mem-store)))
+
+
+(def peer (server-peer (create-http-kit-handler! "ws://localhost:8080/geschichte/ws")
+                       store))
+
+
+(def stage (->> (repo/new-repository "shelf@polyc0l0r.net"
+                                     {:version 1
+                                      :type "lambda-shelf"}
+                                     "A bookmarking application."
+                                     false
+                                     {:links #{}
+                                      :comments #{}})
+                (wire-stage peer)
+                <!!
+                sync!
+                <!!
+                atom))
 
 
 (defn fetch-url [url]
@@ -74,6 +100,8 @@
 
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
 
+  (GET "/geschichte/ws" [] (-> @peer :volatile :handler))
+
   (POST "/bookmark/add" request
         (let [data (-> request :body slurp read-string)
               resp (warehouse/insert-bookmark
@@ -111,7 +139,7 @@
 (defn start-server [port]
   (do
     (println (str "Starting server @ port " port))
-    (run-server site {:port port :join? false})))
+    (run-server #'site {:port port :join? false})))
 
 
 (defn -main []

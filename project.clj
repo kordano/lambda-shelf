@@ -13,7 +13,7 @@
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2156"]
-                 [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
+                 [org.clojure/core.async "0.1.278.0-76b25b-alpha"]
                  [ring "1.2.2"]
                  [com.ashafa/clutch "0.4.0-RC1"]
                  [enlive "1.1.5"]
@@ -21,6 +21,7 @@
                  [om "0.5.0"]
                  [http-kit "2.1.18"]
                  [com.facebook/react "0.9.0.1"]
+                 [geschichte "0.1.0-SNAPSHOT"]
                  [hiccups "0.3.0"]
                  [sablono "0.2.14"]]
 
