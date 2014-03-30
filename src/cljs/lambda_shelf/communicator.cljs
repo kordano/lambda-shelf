@@ -1,5 +1,8 @@
 (ns lambda-shelf.communicator
   (:require [goog.net.XhrIo :as xhr]
+            [goog.net.WebSocket]
+            [goog.net.WebSocket.EventType :as event-type]
+            [goog.events :as events]
             [cljs.reader :refer [read-string]]
             [cljs.core.async :as async :refer [<! >! chan close! put!]])
   (:require-macros [cljs.core.async.macros :refer [go alt! go-loop]]))
@@ -38,7 +41,6 @@
 
 
 ;; --- WEBSOCKET CONNECTION ---
-;; based on https://github.com/loganlinn/cljs-websockets-async
 
 (defn connect!
   ([uri] (connect! uri {}))
@@ -46,10 +48,16 @@
       (let [on-connect (chan)
             in (in)
             out (out)
-            websocket (js/WebSocket. uri)]
+            websocket (goog.net.WebSocket.)]
         (.log js/console "establishing websocket ...")
         (doto websocket
-          (aset "onopen" (fn []
+          (events/listen event-type/MESSAGE
+                         (fn [m]
+                              (let [data (read-string (.-message m))]
+                                (.log js/console)
+                                (put! out data))))
+          (events/listen event-type/OPENED
+                         (fn []
                            (close! on-connect)
                            (.log js/console "channel opened")
                            (go-loop []
@@ -59,19 +67,18 @@
                                             (recur))
                                         (do (close! out)
                                             (.close websocket)))))))
-          (aset "onclose" (fn []
+          (events/listen event-type/CLOSED
+                         (fn []
                             (.log js/console "channel closed")
                             (close! in)
                             (close! out)))
-          (aset "onerror" (fn [e] (.log js/console (str "ERROR:" e))))
-          (aset "onmessage" (fn [m]
-                              (let [data (read-string (.-data m))]
-                                (.log js/console)
-                                (put! out data)))))
+          (events/listen event-type/ERROR (fn [e] (.log js/console (str "ERROR:" e))))
+          (.open uri))
         (go
           (<! on-connect)
           {:uri uri :websocket websocket :in in :out out}))))
 
+;; --- testing ---
 #_(go
   (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
     (>! (:in connection) {:topic :greeting :data ""})
