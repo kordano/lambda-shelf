@@ -4,11 +4,26 @@
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer [resources]]
             [compojure.core :refer [GET POST defroutes]]
+            [compojure.handler :refer [site]]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
+            [ring.util.response :as resp]
+            [cemerick.friend :as friend]
+            [cemerick.friend.workflows :as workflows]
+            [cemerick.friend.credentials :as creds]
             [clojure.java.io :as io]
+            [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]))
 
+
+(def users {"root" {:username "root"
+                    :password (creds/hash-bcrypt "lisp")
+                    :roles #{::admin}}
+            "eve" {:username "eve"
+                    :password (creds/hash-bcrypt "lisp")
+                    :roles #{::user}}})
+
+(derive ::admin ::user)
 
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
@@ -21,7 +36,6 @@
       first
       :content
       first))
-
 
 
 (defn dispatch-bookmark [{:keys [topic data] :as incoming}]
@@ -52,14 +66,7 @@
                   (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
-(enlive/deftemplate page
-  (io/resource "public/index.html")
-  []
-  [:body] (enlive/append
-           (enlive/html [:script (browser-connected-repl-js)])))
-
-
-(defroutes site
+(defroutes handler
   (resources "/")
 
   (GET "/bookmark/init" []
@@ -105,13 +112,31 @@
            :headers {"Content-Type" "application/edn"}
            :body (str (warehouse/get-all-bookmarks))}))
 
-  (GET "/*" req (page)))
+  (GET "/login" req (views/login))
 
+  (GET "/logout" req
+       (friend/logout* (resp/redirect (str (:context req) "/login"))))
+
+  (GET "/*" req (friend/authorize #{::user} (views/page req))))
+
+
+(def secured-app
+  (-> handler
+      (friend/authenticate
+        {:allow-anon? true
+         :login-uri "/login"
+         :default-landing-uri "/"
+         :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
+                                    resp/response
+                                    (resp/status 401))
+         :credential-fn #(creds/bcrypt-credential-fn users %)
+         :workflows [(workflows/interactive-form)]})
+      site))
 
 (defn start-server [port]
   (do
     (println (str "Starting server @ port " port))
-    (run-server site {:port port :join? false})))
+    (run-server secured-app {:port port :join? false})))
 
 
 (defn -main []
@@ -121,6 +146,7 @@
 
 
 ;; --- TESTING ---
+
 #_(def server (start-server 8080))
+
 #_(server)
-#_(.start server)

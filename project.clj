@@ -15,6 +15,7 @@
                  [org.clojure/clojurescript "0.0-2156"]
                  [org.clojure/core.async "0.1.267.0-0d7780-alpha"]
                  [ring "1.2.2"]
+                 [com.cemerick/friend "0.2.0"]
                  [com.ashafa/clutch "0.4.0-RC1"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
