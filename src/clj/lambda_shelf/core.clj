@@ -139,9 +139,9 @@
     (run-server secured-app {:port port :join? false})))
 
 
-(defn -main []
+(defn -main [& args]
   (warehouse/init-db)
-  (let [port (Integer. (or (System/getenv "PORT") "8080"))]
+  (let [port (Integer. (or (System/getenv "PORT") (str args)))]
     (start-server port)))
 
 
