@@ -11,7 +11,6 @@
   (:require-macros [hiccups.core :as hiccups]
                    [cljs.core.async.macros :refer [go]]))
 
-
 ;; fire up repl
 #_(do
     (def repl-env (reset! cemerick.austin.repls/browser-repl-env
@@ -22,47 +21,7 @@
 
 (def app-state (atom {:bookmarks nil}))
 
-(defn navbar-view [app owner]
-  (reify
-    om/IRenderState
-    (render-state [this state]
-      (html
-       [:div.container
-        [:div.navbar-header
-         [:a.navbar-brand {:href "#"}
-        "The Shelf"]]
-        [:div.collapse.navbar-collapse
-         [:ul.nav.navbar-nav.navbar-right
-          [:li
-           [:a {:href "#"
-                :data-toggle "tooltip"
-                :data-placement "bottom"
-                :title "Import bookmarks"}
-            [:span.glyphicon.glyphicon-import]]]
-          [:li
-           [:a {:href "/bookmark/export.edn"
-                :data-toggle "tooltip"
-                :data-placement "bottom"
-                :title "Export bookmarks"}
-            [:span.glyphicon.glyphicon-export]]]
-          [:li
-           [:a {:href "#"
-                :data-toggle "tooltip"
-                :data-placement "bottom"
-                :title "Sign in"
-                 :on-click (fn [_] ((om/root
-                                    login-view
-                                    @app
-                                    {:target (. js/document (getElementById "main"))})))}
-                [:span.glyphicon.glyphicon-user]]]]]]))))
-
-
 (om/root
  bookmarks-view
  app-state
  {:target (. js/document (getElementById "main"))})
-
-(om/root
- navbar-view
- app-state
- {:target (. js/document (getElementById "overall-nav"))})
