@@ -4,7 +4,7 @@
             [net.cgrand.enlive-html :as enlive]
             [compojure.route :refer [resources]]
             [compojure.core :refer [GET POST defroutes]]
-            [compojure.handler :refer [site]]
+            [compojure.handler :refer [site api]]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [ring.util.response :as resp]
             [cemerick.friend :as friend]
@@ -15,6 +15,7 @@
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]))
 
+(defn now [] (java.util.Date.))
 
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "lisp")
@@ -48,7 +49,7 @@
                data
                [:title]
                #(if (= "" %) (fetch-url-title (:url data)) %)))
-             (warehouse/get-all-bookmarks))
+             {:data (warehouse/get-all-bookmarks)})
     :vote (do (warehouse/vote-bookmark data)
               (warehouse/get-all-bookmarks))
     :comment (do (warehouse/comment-bookmark data)
@@ -63,6 +64,8 @@
                 (println "channel closed: " status)))
     (on-receive channel
                 (fn [data]
+                  (println (str "Incoming package: " (now)))
+                  (pprint (read-string data))
                   (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
@@ -80,37 +83,6 @@
         :body (str (warehouse/get-all-bookmarks))})
 
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
-
-  (POST "/bookmark/add" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/insert-bookmark
-                    (update-in
-                     data
-                     [:title]
-                     #(if (= "" %) (fetch-url-title (:url data)) %)))]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
-
-  (POST "/bookmark/fetch-title" request
-        (let [data (-> request :body slurp read-string)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str {:title (fetch-url-title (:url data))})}))
-
-  (POST "/bookmark/vote" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/vote-bookmark data)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
-
-  (POST "/bookmark/comment" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/comment-bookmark data)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
 
   (GET "/login" req (views/login))
 
@@ -133,6 +105,7 @@
          :workflows [(workflows/interactive-form)]})
       site))
 
+
 (defn start-server [port]
   (do
     (println (str "Starting server @ port " port))
@@ -140,10 +113,10 @@
 
 
 (defn -main [& args]
+  (println (first args))
   (warehouse/init-db)
-  (let [port (Integer. (or (System/getenv "PORT") (str args)))]
+  (let [port (Integer. (or (System/getenv "PORT") (first args)))]
     (start-server port)))
-
 
 ;; --- TESTING ---
 
