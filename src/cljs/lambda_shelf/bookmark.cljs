@@ -23,15 +23,19 @@
 
 (defn add-bookmark [app owner]
   "Collect input data, send it to server and update dom"
-  (let [new-url (.-value (om/get-node owner "new-url"))
-        new-title (.-value (om/get-node owner "new-title"))
-        new-comment (.-value (om/get-node owner "new-comment"))
-        add-btn (om/get-node owner "add-btn")
-        package (str {:url new-url :title new-title :comment new-comment})]
-    (go
+  (go
+    (let [new-url (.-value (om/get-node owner "new-url"))
+          new-title (.-value (om/get-node owner "new-title"))
+          new-comment (.-value (om/get-node owner "new-comment"))
+          add-btn (om/get-node owner "add-btn")
+          package {:topic :add :data {:url new-url :title new-title :comment new-comment}}
+          ws-in (om/get-state owner :ws-in)
+          ws-out (om/get-state owner :ws-out)]
       (set! (.-innerHTML add-btn) "Adding...")
       (set! (.-disabled add-btn) true)
-      (>! (om/get-state owner :incoming) (<! (post-edn "bookmark/add" package)))
+      (>! ws-in package)
+      (let [current-bookmarks (-> ws-out <! :data)]
+          (>! (om/get-state owner :incoming) current-bookmarks))
       (set! (.-innerHTML add-btn) "Add!")
       (set! (.-disabled add-btn) false)
       (om/set-state! owner [:input-text :url] "")
@@ -41,28 +45,36 @@
 
 (defn add-bookmark-comment [{:keys [_id] :as bookmark} owner]
   "Submit new comment and update dom"
-  (let [new-comment (.-value (om/get-node owner (str "new-comment-" _id)))]
+  (let [comment-field (om/get-node owner (str "new-comment-" _id "-group"))
+        new-comment (.-value (om/get-node owner (str "new-comment-" _id)))
+        ws-in (om/get-state owner :ws-in)
+        ws-out (om/get-state owner :ws-out)]
     (if (= 0 (.-length (.trim new-comment)))
-      (.log js/console "blank comment")
+      (.log js/console "_blank")
       (go
-        (>! (om/get-state owner :incoming)
-          (<! (post-edn
-               "bookmark/comment"
-               (str {:_id _id :comment new-comment}))))
-        (om/set-state! owner [:input-text :modal-comment] "")))))
+        (.add (.-classList comment-field) "csspinner")
+        (.add (.-classList comment-field) "traditional")
+        (>!  ws-in {:topic :comment :data {:_id _id :comment new-comment}})
+        (>! (om/get-state owner :incoming) (<! ws-out))
+        (om/set-state! owner [:input-text :modal-comment] "")
+        (.remove (.-classList comment-field) "csspinner")
+        (.remove (.-classList comment-field) "traditional")))))
 
 
 (defn fetch-url-title [app owner url]
   "Fetch title element of given site and write it to title input field"
-  (let [package (str {:url url})
-        fetch-btn (om/get-node owner "fetch-btn")
-        title-input (om/get-node owner "title-group")]
-    (go
+  (go
+    (let [package {:topic :fetch-title :data {:url url}}
+          fetch-btn (om/get-node owner "fetch-btn")
+          title-input (om/get-node owner "title-group")
+          ws-in (om/get-state owner :ws-in)
+          ws-out (om/get-state owner :ws-out)]
       (set! (.-innerHTML fetch-btn) "Fetching...")
       (.add (.-classList title-input) "csspinner")
       (.add (.-classList title-input) "traditional")
       (set! (.-disabled fetch-btn) true)
-      (let [title (:title (<! (post-edn "bookmark/fetch-title" package)))]
+      (>! ws-in package)
+      (let [title (-> ws-out <! :title)]
         (set! (.-innerHTML fetch-btn) "Fetch!")
         (.remove (.-classList title-input) "csspinner")
         (.remove (.-classList title-input) "traditional")
@@ -76,7 +88,7 @@
   (let [comment-count (count comments)]
       (reify
         om/IRenderState
-        (render-state [this {:keys [incoming input-text] :as state}]
+        (render-state [this {:keys [incoming input-text ws-in ws-out] :as state}]
           (html
            [:tr
             ;; title and collapsed comments
@@ -93,7 +105,7 @@
 
               [:br]
 
-              [:div.form-group
+              [:div.form-group {:ref (str "new-comment-" _id "-group")}
                [:textarea.form-control
                 {:type "text"
                  :ref (str "new-comment-" _id)
@@ -129,8 +141,11 @@
                :data-placement "left"
                :title "Votes"
                :on-click #(go
-                            (>! incoming
-                              (<! (post-edn "bookmark/vote" (str {:_id _id :upvote true})))))}
+                            (let [ws-in (om/get-state owner :ws-in)
+                                  ws-out (om/get-state owner :ws-out)]
+                              (>! ws-in {:topic :vote :data {:_id _id :upvote true}})
+                              (>! incoming (<! ws-out))))
+               }
               [:span votes]
               " \u03BB"]]])))))
 
@@ -167,6 +182,8 @@
       {:incoming (chan)
        :fetch (chan)
        :search (chan)
+       :ws-in (chan)
+       :ws-out (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment "" :search ""}
        :page 0
        :page-size 16})
@@ -175,7 +192,14 @@
     (will-mount [_]
       (let [incoming (om/get-state owner :incoming)
             fetch (om/get-state owner :fetch)
-            search (om/get-state owner :search)]
+            search (om/get-state owner :search)
+            ws-in (om/get-state owner :ws-in)
+            ws-out (om/get-state owner :ws-out)]
+        (go
+          (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
+            (om/set-state! owner :ws-in (:in connection))
+            (om/set-state! owner :ws-out (:out connection))
+            ))
         (go
           (loop []
             (let [[v c] (alts! [incoming fetch search])]
@@ -216,7 +240,7 @@
 
 
     om/IRenderState
-    (render-state [this {:keys [incoming search page page-size input-text fetch] :as state}]
+    (render-state [this {:keys [incoming search page page-size input-text fetch ws-in ws-out] :as state}]
       (html
        [:div
 
@@ -303,7 +327,7 @@
          [:table.table.table-striped
           [:tbody#bookmark-table
            (om/build-all bookmark-view (take page-size (drop (* page-size page) (:bookmarks app)))
-                         {:init-state {:incoming incoming}})]]]
+                         {:init-state {:incoming incoming :ws-in ws-in :ws-out ws-out}})]]]
 
         (pagination-view app owner state)]))))
 
