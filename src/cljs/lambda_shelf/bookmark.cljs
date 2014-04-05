@@ -1,9 +1,9 @@
 (ns lambda-shelf.bookmark
-  (:require [cljs.core.async :refer [put! chan <! >! alts! timeout close!]]
+  (:require [cljs.core.async :refer [put! take! chan <! >! alts! timeout close!]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
             [sablono.core :as html :refer-macros [html]]
-            [lambda-shelf.communicator :refer [post-edn get-edn]])
+            [lambda-shelf.communicator :refer [post-edn get-edn connect!]])
   (:require-macros [cljs.core.async.macros :refer [go]]))
 
 

@@ -23,6 +23,8 @@
       (put-document
        (assoc entry :votes 0 :date (now) :comments (if (= comment "") [] [comment]))))))
 
+#_(insert-bookmark {:title "A testing title." :url "http://localhost" :date (now) :comment "Huhu."})
+
 
 (defn vote-bookmark [{:keys [_id upvote]}]
   (with-db (database-url "bookmark")
@@ -38,3 +40,5 @@
   (with-db (database-url "bookmark")
     (let [ids (map #(:id %) (all-documents))]
       (mapv #(dissoc (get-document %) :_rev) ids))))
+
+#_(get-all-bookmarks)

@@ -5,11 +5,18 @@
             [compojure.route :refer [resources]]
             [compojure.core :refer [GET POST defroutes]]
             [geschichte.repo :as repo]
-            [geschichte.sync :refer [server-peer sync! wire-stage]]
+            [geschichte.sync :refer [server-peer]]
+            [geschichte.stage :refer [sync! wire-stage]]
             [geschichte.platform :refer [create-http-kit-handler!]]
             [konserve.store :refer [new-mem-store]]
+            [compojure.handler :refer [site api]]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
+            [ring.util.response :as resp]
+            [cemerick.friend :as friend]
+            [cemerick.friend.workflows :as workflows]
+            [cemerick.friend.credentials :as creds]
             [clojure.java.io :as io]
+            [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]
             [clojure.core.async :refer [<!! >!!]]))
@@ -35,6 +42,16 @@
                 <!!
                 atom))
 
+(defn now [] (java.util.Date.))
+
+(def users {"root" {:username "root"
+                    :password (creds/hash-bcrypt "lisp")
+                    :roles #{::admin}}
+            "eve" {:username "eve"
+                    :password (creds/hash-bcrypt "lisp")
+                    :roles #{::user}}})
+
+(derive ::admin ::user)
 
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
@@ -49,7 +66,6 @@
       first))
 
 
-
 (defn dispatch-bookmark [{:keys [topic data] :as incoming}]
   (case topic
     :greeting {:data "Greetings Master!" :topic :greeting}
@@ -60,7 +76,7 @@
                data
                [:title]
                #(if (= "" %) (fetch-url-title (:url data)) %)))
-             (warehouse/get-all-bookmarks))
+             {:data (warehouse/get-all-bookmarks)})
     :vote (do (warehouse/vote-bookmark data)
               (warehouse/get-all-bookmarks))
     :comment (do (warehouse/comment-bookmark data)
@@ -75,17 +91,11 @@
                 (println "channel closed: " status)))
     (on-receive channel
                 (fn [data]
+                  (println (str "Incoming package: " (now)))
                   (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
-(enlive/deftemplate page
-  (io/resource "public/index.html")
-  []
-  [:body] (enlive/append
-           (enlive/html [:script (browser-connected-repl-js)])))
-
-
-(defroutes site
+(defroutes handler
   (resources "/")
 
   (GET "/bookmark/init" []
@@ -102,53 +112,42 @@
 
   (GET "/geschichte/ws" [] (-> @peer :volatile :handler))
 
-  (POST "/bookmark/add" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/insert-bookmark
-                    (update-in
-                     data
-                     [:title]
-                     #(if (= "" %) (fetch-url-title (:url data)) %)))]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
+  (GET "/login" req (views/login))
 
-  (POST "/bookmark/fetch-title" request
-        (let [data (-> request :body slurp read-string)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str {:title (fetch-url-title (:url data))})}))
+  (GET "/logout" req
+       (friend/logout* (resp/redirect (str (:context req) "/login"))))
 
-  (POST "/bookmark/vote" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/vote-bookmark data)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
+  (GET "/*" req (friend/authorize #{::user} (views/page req))))
 
-  (POST "/bookmark/comment" request
-        (let [data (-> request :body slurp read-string)
-              resp (warehouse/comment-bookmark data)]
-          {:status 200
-           :headers {"Content-Type" "application/edn"}
-           :body (str (warehouse/get-all-bookmarks))}))
 
-  (GET "/*" req (page)))
+(def secured-app
+  (-> handler
+      (friend/authenticate
+        {:allow-anon? true
+         :login-uri "/login"
+         :default-landing-uri "/"
+         :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
+                                    resp/response
+                                    (resp/status 401))
+         :credential-fn #(creds/bcrypt-credential-fn users %)
+         :workflows [(workflows/interactive-form)]})
+      site))
 
 
 (defn start-server [port]
   (do
     (println (str "Starting server @ port " port))
-    (run-server #'site {:port port :join? false})))
+    (run-server secured-app {:port port :join? false})))
 
 
-(defn -main []
+(defn -main [& args]
+  (println (first args))
   (warehouse/init-db)
-  (let [port (Integer. (or (System/getenv "PORT") "8080"))]
+  (let [port (Integer. (or (System/getenv "PORT") (first args)))]
     (start-server port)))
 
-
 ;; --- TESTING ---
+
 #_(def server (start-server 8080))
+
 #_(server)
-#_(.start server)

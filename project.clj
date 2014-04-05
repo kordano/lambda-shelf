@@ -13,8 +13,9 @@
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2156"]
-                 [org.clojure/core.async "0.1.278.0-76b25b-alpha"]
+                 [org.clojure/core.async "0.1.0-SNAPSHOT"]
                  [ring "1.2.2"]
+                 [com.cemerick/friend "0.2.0"]
                  [com.ashafa/clutch "0.4.0-RC1"]
                  [enlive "1.1.5"]
                  [compojure "1.1.6"]
