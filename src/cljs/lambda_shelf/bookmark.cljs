@@ -3,7 +3,6 @@
             [geschichte.stage :refer [realize-value  wire-stage sync! connect! transact] :as s]
             [geschichte.meta :refer [update]]
             [geschichte.repo :as repo]
-            [hasch.core :refer [uuid]]
             [konserve.store :refer [new-mem-store]]
             [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
             [om.core :as om :include-macros true]
@@ -20,33 +19,43 @@
                      "A bookmark app."
                      true
                      {:links #{{:url "http://clojure.org"
-                                :title "Phunctional Phun"}}})
+                                :title "Phunctional Phun"
+                                :date (js/Date.)
+                                :votes 0
+                                :user "repo1@shelf.polyc0l0r.net"}}
+                      :comments #{}})
+
+(def pub-ch (chan))
 
 (go (def store (<! (new-mem-store)))
 
     (def peer (client-peer "shelf-client" store))
 
-    (def stage (-> {:meta {:causal-order {#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91" []},
-                           :last-update #inst "2014-04-06T10:56:18.987-00:00",
+    (def stage (-> {:meta {:causal-order {#uuid "2388e0bc-5238-5c54-b373-46a4bd183906" []},
+                           :last-update #inst "2014-04-06T13:06:32.230-00:00",
                            :head "master",
                            :public true,
-                           :branches {"master" {:heads #{#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91"}}},
+                           :branches {"master" {:heads #{#uuid "2388e0bc-5238-5c54-b373-46a4bd183906"}}},
                            :schema {:type "http://github.com/ghubber/geschichte", :version 1},
                            :pull-requests {},
-                           :id #uuid "5ee49e15-deb3-4967-b2bb-bd9a626ff027",
+                           :id #uuid "097e0406-3297-482c-b3d5-2592381af85a",
                            :description "A bookmark app."},
                     :author "repo1@shelf.polyc0l0r.net",
                     :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
                     :transactions [],
                     :type :meta-sub,
-                    :new-values {#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91"
+                    :new-values {#uuid "2388e0bc-5238-5c54-b373-46a4bd183906"
                                  {:transactions [[{:links #{{:url "http://clojure.org",
-                                                             :title "Phunctional Phun"}}}
+                                                             :title "Phunctional Phun",
+                                                             :date #inst "2014-04-06T13:06:32.230-00:00",
+                                                             :votes 0,
+                                                             :user "repo1@shelf.polyc0l0r.net"}},
+                                                   :comments #{}}
                                                   '(fn replace [old params] params)]],
-                                  :parents [], :ts #inst "2014-04-06T10:56:18.987-00:00",
+                                  :parents [],
+                                  :ts #inst "2014-04-06T13:06:32.230-00:00",
                                   :author "repo1@shelf.polyc0l0r.net",
                                   :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
-
                    (s/wire-stage peer)
                    <!
                    s/sync!
@@ -55,21 +64,9 @@
                    <!
                    atom))
 
-    (let [[p out] (:chans @stage)
-          pub-ch (chan)
-          pr-stage (partial println "STAGE")]
-      (sub p :meta-pub pub-ch)
-      (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
-               (when pm
-                 (println "PM" pm)
-                 (-> (swap! stage update-in [:meta] update meta)
-                     (realize-value store {'(fn replace [old params] params)
-                                           (fn replace [old params] params)
-                                           '(fn [old params] (merge-with set/union old params))
-                                           (fn [old params] (merge-with set/union old params))})
-                     <!
-                     pr-stage)
-                 (recur (<! pub-ch))))))
+    (let [[p out] (:chans @stage)]
+      (>! pub-ch @stage) ;; init
+      (sub p :meta-pub pub-ch)))
 
 #_(let [logger #(.log js/console %)]
   (go (-> @stage
@@ -96,41 +93,10 @@
 ;; grow sets of links and comments, realize stage value, sort+join on load
 ;; on meta-pub, rebase on head of master, realize new stage value -> reload
 ;; transactions:
-#_((fn add-link [old {:keys [link]}]
-     (update-in old [:links] conj link))
-   {:links #{}} ;; old
-   {:link {:title "Clojure"
-          :url "http://clojure.org/"
-          :ts (js/Date.)}})
 
-#_{:links #{}
- :comments #{{:url "http://clojure.org/"
-              :text "I am a comment."}}}
-
-;; - authentication
+;; things needed for serious impl:
 ;; - relational data management - datalog
 ;; - encryption: {:keys {:userA [12 38 28] :userB [38 56 89]}
-
-
-#_(let [pub-ch (chan)
-      [p _] (:chans @stage)
-      sort-and-join identity]
-  (sub p :meta-pub pub-ch)
-  (go-loop [p (<! pub-ch)]
-           (when p
-             (om/transact! app
-                           :bookmarks
-                           (fn [_]
-                             (sort-and-join ;; manual db like parsing for ui for now
-                              (realize-value (swap! stage update-in [:meta] update (:meta p))
-                                             store
-                                             ;; eval-fn
-                                             {'(fn add-link [old {:keys [link]}]
-                                                 (update-in old [:links] conj link))
-                                              (fn add-link [old {:keys [link]}]
-                                                 (update-in old [:links] conj link))}))))
-             (recur (<! pub-ch)))))
-
 
 
 
@@ -322,48 +288,65 @@
             search (om/get-state owner :search)
             ws-in (om/get-state owner :ws-in)
             ws-out (om/get-state owner :ws-out)]
+        (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
+                 (when pm
+                   (let [nval (-> (swap! stage update-in [:meta] update meta)
+                                  (realize-value store {'(fn replace [old params] params)
+                                                        (fn replace [old params] params)
+                                                        '(fn [old params] (merge-with set/union old params))
+                                                        (fn [old params] (merge-with set/union old params))})
+                                  <!
+                                  :links)]
+                     (om/transact!
+                      app
+                      :bookmarks
+                      (fn [_]
+                        (vec
+                         (sort-by :date >
+                                  nval)))))
+                   (recur (<! pub-ch))))
         (go
-          (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
-            (om/set-state! owner :ws-in (:in connection))
-            (om/set-state! owner :ws-out (:out connection))
-            ))
+         (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
+           (om/set-state! owner :ws-in (:in connection))
+           (om/set-state! owner :ws-out (:out connection))
+           ))
         (go
-          (loop []
-            (let [[v c] (alts! [incoming fetch search])]
-              (condp = c
-                search (do
-                         (om/transact!
-                            app
-                            :bookmarks
-                            (fn [xs]
-                              (vec
-                               (sort-by :date >
-                                        (remove
-                                         #(and (if (nil? (% :title))
-                                                 true
-                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
-                                               (if (nil? (% :url))
-                                                 true
-                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
-                                         xs)))))
-                           (om/set-state! owner :page 0))
+         (loop []
+           (let [[v c] (alts! [incoming fetch search])]
+             (condp = c
+               search (do
+                        (om/transact!
+                         app
+                         :bookmarks
+                         (fn [xs]
+                           (vec
+                            (sort-by :date >
+                                     (remove
+                                      #(and (if (nil? (% :title))
+                                              true
+                                              (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
+                                            (if (nil? (% :url))
+                                              true
+                                              (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
+                                      xs)))))
+                        (om/set-state! owner :page 0))
 
-                incoming (om/transact!
-                          app
-                          :bookmarks
-                          (fn [_]
-                            (vec
-                             (sort-by :date >
-                                      (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
+               incoming nil #_(om/transact!
+                               app
+                               :bookmarks
+                               (fn [_]
+                                 (vec
+                                  (sort-by :date >
+                                           (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
 
-                fetch (fetch-url-title app owner v))
-              (recur))))
+               fetch (fetch-url-title app owner v))
+             (recur))))
 
         ;; auto update bookmarks all 5 minutes
         (go
-          (while true
-            (>! incoming (<! (get-edn "bookmark/init")))
-            (<! (timeout 300000))))))
+         (while true
+           (>! incoming (<! (get-edn "bookmark/init")))
+           (<! (timeout 300000))))))
 
 
     om/IRenderState
@@ -444,10 +427,10 @@
              :onKeyPress #(when (== (.-keyCode %) 13)
                             (if (not (blank? (:search input-text)))
                               (go
-                                (>! incoming (<! (get-edn "bookmark/init")))
-                                (>! search (:search input-text)))
+                               (>! incoming (<! (get-edn "bookmark/init")))
+                               (>! search (:search input-text)))
                               (go
-                                (>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
+                               (>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
