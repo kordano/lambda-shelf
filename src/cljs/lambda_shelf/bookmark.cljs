@@ -1,10 +1,128 @@
 (ns lambda-shelf.bookmark
-  (:require [cljs.core.async :refer [put! take! chan <! >! alts! timeout close!]]
+  (:require [geschichte.sync :refer [client-peer]]
+            [geschichte.stage :refer [realize-value  wire-stage sync! connect! transact] :as s]
+            [geschichte.meta :refer [update]]
+            [geschichte.repo :as repo]
+            [konserve.store :refer [new-mem-store]]
+            [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
+            [clojure.set :as set]
             [sablono.core :as html :refer-macros [html]]
             [lambda-shelf.communicator :refer [post-edn get-edn connect!]])
-  (:require-macros [cljs.core.async.macros :refer [go]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+
+(enable-console-print!)
+
+(go (def store (<! (new-mem-store)))
+
+    (def peer (client-peer "shelf-client" store))
+
+    (def stage (-> {:meta {:causal-order {#uuid "290fc906-a741-545c-803a-6ef81dfd2921" []},
+                           :last-update #inst "2014-04-04T20:32:53.639-00:00",
+                           :head "master",
+                           :public true,
+                           :branches {"master" {:heads #{#uuid "290fc906-a741-545c-803a-6ef81dfd2921"}}},
+                           :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+                           :pull-requests {},
+                           :id #uuid "da0d84bb-9d85-4505-a654-9fb5fe41339c",
+                           :description "A bookmarking app."},
+                    :author "repo1@shelf.polyc0l0r.net",
+                    :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
+                    :transactions [],
+                    :type :meta-sub,
+                    :new-values {#uuid "290fc906-a741-545c-803a-6ef81dfd2921"
+                                 {:transactions [[{:links #{{:url "http://slashdot.org"}}}
+                                                  '(fn replace [old params] params)]],
+                                  :parents [],
+                                  :ts #inst "2014-04-04T20:32:53.629-00:00",
+                                  :author "repo1@shelf.polyc0l0r.net",
+                                  :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
+                   (s/wire-stage peer)
+                   <!
+                   s/sync!
+                   <!
+                   (s/connect! "ws://localhost:8080/geschichte/ws")
+                   <!
+                   atom))
+
+    (let [[p out] (:chans @stage)
+          pub-ch (chan)
+          pr-stage (partial println "STAGE")]
+      (sub p :meta-pub pub-ch)
+      (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
+               (when pm
+                 (println "PM" pm)
+                 (-> (swap! stage update-in [:meta] update meta)
+                     (realize-value store {'(fn replace [old params] params)
+                                           (fn replace [old params] params)
+                                           '(fn [old params] (merge-with set/union old params))
+                                           (fn [old params] (merge-with set/union old params))})
+                     <!
+                     pr-stage)
+                 (recur (<! pub-ch))))))
+
+#_(let [logger #(.log js/console %)]
+  (go (-> @stage
+          (s/transact {:links #{{:url "http://clojure.org"}}} '(fn [old params] (merge-with set/union old params)))
+          (realize-value store {'(fn replace [old params] params)
+                                (fn replace [old params] params)
+                                '(fn [old params] (merge-with set/union old params))
+                                (fn [old params] (merge-with set/union old params))})
+          <!
+          println)))
+
+#_(let [logger #(.log js/console %)]
+  (go (-> @stage
+          (s/transact {:links #{{:url "http://clojure.org"}}} '(fn [old params] (merge-with set/union old params)))
+          repo/commit
+          s/sync!
+          <!
+          println)))
+
+;; authenticate by user-id, authorize to read public repos and push to own
+;; encryption of transaction with repo key encrypted by userkeys, public key scheme
+
+;;  data-model
+;; grow sets of links and comments, realize stage value, sort+join on load
+;; on meta-pub, rebase on head of master, realize new stage value -> reload
+;; transactions:
+#_((fn add-link [old {:keys [link]}]
+     (update-in old [:links] conj link))
+   {:links #{}} ;; old
+   {:link {:title "Clojure"
+          :url "http://clojure.org/"
+          :ts (js/Date.)}})
+
+#_{:links #{}
+ :comments #{{:url "http://clojure.org/"
+              :text "I am a comment."}}}
+
+;; - authentication
+;; - relational data management - datalog
+;; - encryption: {:keys {:userA [12 38 28] :userB [38 56 89]}
+
+
+#_(let [pub-ch (chan)
+      [p _] (:chans @stage)
+      sort-and-join identity]
+  (sub p :meta-pub pub-ch)
+  (go-loop [p (<! pub-ch)]
+           (when p
+             (om/transact! app
+                           :bookmarks
+                           (fn [_]
+                             (sort-and-join ;; manual db like parsing for ui for now
+                              (realize-value (swap! stage update-in [:meta] update (:meta p))
+                                             store
+                                             ;; eval-fn
+                                             {'(fn add-link [old {:keys [link]}]
+                                                 (update-in old [:links] conj link))
+                                              (fn add-link [old {:keys [link]}]
+                                                 (update-in old [:links] conj link))}))))
+             (recur (<! pub-ch)))))
+
+
 
 
 (defn handle-text-change [e owner {:keys [input-text]} input-type]
@@ -306,6 +424,7 @@
                          {:init-state {:incoming incoming}})]]]
 
         (pagination-view app owner state)]))))
+
 
 
 #_(om/root

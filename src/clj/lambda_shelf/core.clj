@@ -22,7 +22,24 @@
             [clojure.core.async :refer [<!! >!!]]))
 
 
-(def store (<!! (new-mem-store)))
+(def store (<!! (new-mem-store
+                 (atom {#uuid "290fc906-a741-545c-803a-6ef81dfd2921"
+                        {:transactions [[{:links #{{:url "http://slashdot.org"}}}
+                                         '(fn replace [old params] params)]],
+                         :parents [],
+                         :ts #inst "2014-04-04T20:32:53.629-00:00",
+                         :author "repo1@shelf.polyc0l0r.net",
+                         :schema {:version 1, :type "http://shelf.polyc0l0r.net"}},
+                        #uuid "da0d84bb-9d85-4505-a654-9fb5fe41339c"
+                        {:causal-order {#uuid "290fc906-a741-545c-803a-6ef81dfd2921" []},
+                         :last-update #inst "2014-04-04T20:32:53.629-00:00",
+                         :head "master",
+                         :public true,
+                         :branches {"master" {:heads #{#uuid "290fc906-a741-545c-803a-6ef81dfd2921"}}},
+                         :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+                         :pull-requests {},
+                         :id #uuid "da0d84bb-9d85-4505-a654-9fb5fe41339c",
+                         :description "A bookmarking app."}}))))
 
 
 (def peer (server-peer (create-http-kit-handler! "ws://localhost:8080/geschichte/ws")
