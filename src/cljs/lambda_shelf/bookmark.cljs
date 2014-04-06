@@ -3,6 +3,7 @@
             [geschichte.stage :refer [realize-value  wire-stage sync! connect! transact] :as s]
             [geschichte.meta :refer [update]]
             [geschichte.repo :as repo]
+            [hasch.core :refer [uuid]]
             [konserve.store :refer [new-mem-store]]
             [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
             [om.core :as om :include-macros true]
@@ -14,30 +15,38 @@
 
 (enable-console-print!)
 
+#_(repo/new-repository "repo1@shelf.polyc0l0r.net",
+                     {:version 1, :type "http://shelf.polyc0l0r.net"}
+                     "A bookmark app."
+                     true
+                     {:links #{{:url "http://clojure.org"
+                                :title "Phunctional Phun"}}})
+
 (go (def store (<! (new-mem-store)))
 
     (def peer (client-peer "shelf-client" store))
 
-    (def stage (-> {:meta {:causal-order {#uuid "290fc906-a741-545c-803a-6ef81dfd2921" []},
-                           :last-update #inst "2014-04-04T20:32:53.639-00:00",
+    (def stage (-> {:meta {:causal-order {#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91" []},
+                           :last-update #inst "2014-04-06T10:56:18.987-00:00",
                            :head "master",
                            :public true,
-                           :branches {"master" {:heads #{#uuid "290fc906-a741-545c-803a-6ef81dfd2921"}}},
-                           :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+                           :branches {"master" {:heads #{#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91"}}},
+                           :schema {:type "http://github.com/ghubber/geschichte", :version 1},
                            :pull-requests {},
-                           :id #uuid "da0d84bb-9d85-4505-a654-9fb5fe41339c",
-                           :description "A bookmarking app."},
+                           :id #uuid "5ee49e15-deb3-4967-b2bb-bd9a626ff027",
+                           :description "A bookmark app."},
                     :author "repo1@shelf.polyc0l0r.net",
                     :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
                     :transactions [],
                     :type :meta-sub,
-                    :new-values {#uuid "290fc906-a741-545c-803a-6ef81dfd2921"
-                                 {:transactions [[{:links #{{:url "http://slashdot.org"}}}
+                    :new-values {#uuid "1142beb9-bbbe-5ae3-bc1d-ea6c7a192e91"
+                                 {:transactions [[{:links #{{:url "http://clojure.org",
+                                                             :title "Phunctional Phun"}}}
                                                   '(fn replace [old params] params)]],
-                                  :parents [],
-                                  :ts #inst "2014-04-04T20:32:53.629-00:00",
+                                  :parents [], :ts #inst "2014-04-06T10:56:18.987-00:00",
                                   :author "repo1@shelf.polyc0l0r.net",
                                   :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
+
                    (s/wire-stage peer)
                    <!
                    s/sync!
