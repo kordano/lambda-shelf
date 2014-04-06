@@ -14,6 +14,11 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-2156"]
                  [org.clojure/core.async "0.1.0-SNAPSHOT"]
+
+                 [log4j/log4j "1.2.17" :exclusions [javax.mail/mail javax.jms/jms com.sun.jdmk/jmxtools com.sun.jmx/jmxri]]
+                 [org.slf4j/slf4j-log4j12 "1.7.6"]
+                 [org.clojure/tools.logging "0.2.6"]
+
                  [ring "1.2.2"]
                  [com.cemerick/friend "0.2.0"]
                  [com.ashafa/clutch "0.4.0-RC1"]
