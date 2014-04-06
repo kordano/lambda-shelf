@@ -117,23 +117,35 @@
 (defn add-bookmark [app owner]
   "Collect input data, send it to server and update dom"
   (go
-    (let [new-url (.-value (om/get-node owner "new-url"))
-          new-title (.-value (om/get-node owner "new-title"))
-          new-comment (.-value (om/get-node owner "new-comment"))
-          add-btn (om/get-node owner "add-btn")
-          package {:topic :add :data {:url new-url :title new-title :comment new-comment}}
-          ws-in (om/get-state owner :ws-in)
-          ws-out (om/get-state owner :ws-out)]
-      (set! (.-innerHTML add-btn) "Adding...")
-      (set! (.-disabled add-btn) true)
-      (>! ws-in package)
-      (let [current-bookmarks (-> ws-out <! :data)]
-          (>! (om/get-state owner :incoming) current-bookmarks))
-      (set! (.-innerHTML add-btn) "Add!")
-      (set! (.-disabled add-btn) false)
-      (om/set-state! owner [:input-text :url] "")
-      (om/set-state! owner [:input-text :comment] "")
-      (om/set-state! owner [:input-text :title] ""))))
+   (let [new-url (.-value (om/get-node owner "new-url"))
+         new-title (.-value (om/get-node owner "new-title"))
+         new-comment (.-value (om/get-node owner "new-comment"))
+         add-btn (om/get-node owner "add-btn")
+         package {:topic :add :data {:url new-url :title new-title :comment new-comment}}
+         ws-in (om/get-state owner :ws-in)
+         ws-out (om/get-state owner :ws-out)]
+     (set! (.-innerHTML add-btn) "Adding...")
+     (set! (.-disabled add-btn) true)
+     (-> stage
+         (swap!
+          s/transact
+          {:links #{{:url new-url
+                     :title new-title
+                     :date (js/Date.)
+                     :votes 0
+                     :user "repo1@shelf.polyc0l0r.net"}}}
+          '(fn [old params] (merge-with set/union old params)))
+         repo/commit
+         sync!
+         <!)
+     #_(>! ws-in package)
+     #_(let [current-bookmarks (-> ws-out <! :data)]
+         (>! (om/get-state owner :incoming) current-bookmarks))
+     (set! (.-innerHTML add-btn) "Add!")
+     (set! (.-disabled add-btn) false)
+     (om/set-state! owner [:input-text :url] "")
+     (om/set-state! owner [:input-text :comment] "")
+     (om/set-state! owner [:input-text :title] ""))))
 
 
 (defn add-bookmark-comment [{:keys [_id] :as bookmark} owner]
@@ -300,10 +312,7 @@
                      (om/transact!
                       app
                       :bookmarks
-                      (fn [_]
-                        (vec
-                         (sort-by :date >
-                                  nval)))))
+                      (fn [_] (vec (sort-by :date > nval)))))
                    (recur (<! pub-ch))))
         (go
          (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
