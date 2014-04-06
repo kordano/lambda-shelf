@@ -31,6 +31,7 @@
                                 :title "Newz"}}
                       :comments #{}})
 
+
 (def store (<!! (new-mem-store
                  (atom nil))))
 
