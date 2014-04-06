@@ -35,7 +35,7 @@
 
 (defn post-edn [url payload]
   (go
-   (-> (POST url (.toString payload))
+    (-> (POST url (.toString payload))
        <!
        read-string)))
 
@@ -85,4 +85,6 @@
     (.log js/console (str (<! (:out connection))))
     (>! (:in connection) {:topic :get-all :data ""})
     (.log js/console (str (count (<! (:out connection)))))
+    (>! (:in connection) {:topic :fetch-title :data {:url "http://xkcd.com/378/"}})
+    (.log js/console (str (<! (:out connection))))
     (.close (:websocket connection))))
