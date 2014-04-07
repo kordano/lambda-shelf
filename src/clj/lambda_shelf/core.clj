@@ -20,7 +20,9 @@
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]
-            [clojure.core.async :refer [<!! >!!]]))
+            [clojure.core.async :refer [<!! >!!]]
+            [com.ashafa.clutch.utils :as utils]
+            [com.ashafa.clutch :refer [couch]]))
 
 #_(repo/new-repository "shelf@polyc0l0r.net"
                      {:version 1
@@ -33,7 +35,10 @@
                       :comments #{}})
 
 
-(def store (<!! (new-couch-store "bookmarks")))
+(def store (<!! (new-couch-store
+                 (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
+                                                                 "localhost") ":5984"))
+                                   "bookmarks")))))
 
 
 (def peer (server-peer (create-http-kit-handler! "ws://localhost:8080/geschichte/ws")
