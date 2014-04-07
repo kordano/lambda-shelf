@@ -41,7 +41,7 @@
                                    "bookmarks")))))
 
 
-(def peer (server-peer (create-http-kit-handler! "ws://localhost:8080/geschichte/ws")
+(def peer (server-peer (create-http-kit-handler! "ws://shelf.polyc0l0r.net:8080/geschichte/ws")
                        store))
 
 

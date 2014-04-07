@@ -18,7 +18,8 @@
 (defn- url->hash [u]
   (-> u sha-1 hash->str (subs 0 8)))
 
-(def host "localhost")
+
+(def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
 
 #_(repo/new-repository "repo1@shelf.polyc0l0r.net",
@@ -77,7 +78,7 @@
                 <!
                 s/sync!
                 <!
-                (s/connect! (str  "ws://" host ":8080/geschichte/ws"))
+                (s/connect! (str  "ws://" host "/geschichte/ws"))
                 <!
                 atom))
 
@@ -470,7 +471,7 @@
                (fn [_] nval)))
             (recur (<! pub-ch))))
         (go
-          (let [connection (<! (connect! (str "ws://" host ":8080/bookmark/ws")))]
+          (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))
             ))
