@@ -4,7 +4,7 @@
             [geschichte.meta :refer [update]]
             [geschichte.repo :as repo]
             [konserve.store :refer [new-mem-store]]
-            [hasch.core :refer [sha-1 hash->str]]
+            [hasch.core :refer [sha-1 hash->str uuid]]
             [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
@@ -261,68 +261,85 @@
 (defn bookmark-view [{:keys [title url date votes comments] :as bookmark} owner]
   "Bookmark entry in the data table"
   (let [comment-count (count comments)]
-      (reify
-        om/IRenderState
-        (render-state [this {:keys [incoming input-text ws-in ws-out] :as state}]
-          (html
-           [:tr
-            ;; title and collapsed comments
-            [:td
-             [:a {:href url :target "_blank"} title]
+    (reify
+      om/IRenderState
+      (render-state [this {:keys [incoming input-text ws-in ws-out] :as state}]
+        (html
+         [:tr
+          ;; title and collapsed comments
+          [:td
+           [:a {:href url :target "_blank"} title]
 
-             [:div.panel-collapse.collapse
-              {:id (str "comments-panel-" (url->hash url))}
+           [:div.panel-collapse.collapse
+            {:id (str "comments-panel-" (url->hash url))}
 
-              [:br]
+            [:br]
 
-              [:ul.list-group
-               (map #(vec [:li.list-group-item %]) (map :text comments))]
+            [:ul.list-group
+             (map #(vec [:li.list-group-item %]) (map :text comments))]
 
-              [:br]
+            [:br]
 
-              [:div.form-group {:ref (str "new-comment-" (url->hash url) "-group")}
-               [:textarea.form-control
-                {:type "text"
-                 :ref (str "new-comment-" (url->hash url))
-                 :rows 3
-                 :value (:modal-comment input-text)
-                 :style {:resize "vertical"}
-                 :on-change #(handle-text-change % owner state :modal-comment)
-                 :placeholder "What do you think?"}]]
+            [:div.form-group {:ref (str "new-comment-" (url->hash url) "-group")}
+             [:textarea.form-control
+              {:type "text"
+               :ref (str "new-comment-" (url->hash url))
+               :rows 3
+               :value (:modal-comment input-text)
+               :style {:resize "vertical"}
+               :on-change #(handle-text-change % owner state :modal-comment)
+               :placeholder "What do you think?"}]]
 
-              [:button.btn.btn-primary.btn-xs
-               {:type "button"
-                :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
-               "add comment"]]]
+            [:button.btn.btn-primary.btn-xs
+             {:type "button"
+              :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
+             "add comment"]]]
 
-            [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
+          [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
 
-            ;; comment counter and toggle
-            [:td
-             [:a {:href (str "#comments-panel-" (url->hash url))
-                  :data-parent "#bookmark-table"
-                  :data-toggle "collapse"}
-              [:span.badge
-               {:data-toggle "tooltip"
-                :data-placement "left"
-                :title "Comments"}
-               comment-count]]]
+          ;; comment counter and toggle
+          [:td
+           [:a {:href (str "#comments-panel-" (url->hash url))
+                :data-parent "#bookmark-table"
+                :data-toggle "collapse"}
+            [:span.badge
+             {:data-toggle "tooltip"
+              :data-placement "left"
+              :title "Comments"}
+             comment-count]]]
 
-            ;; votes
-            [:td
-             [:button.btn.btn-default.btn-sm
-              {:type "button"
-               :data-toggle "tooltip"
-               :data-placement "left"
-               :title "Votes"
-               :on-click #(go
-                            (let [ws-in (om/get-state owner :ws-in)
-                                  ws-out (om/get-state owner :ws-out)]
-                              #_(>! ws-in {:topic :vote :data {:_id _id :upvote true}})
-                              #_(>! incoming (<! ws-out))))
-               }
-              [:span (count votes)]
-              " \u03BB"]]])))))
+          ;; votes
+          [:td
+           [:button.btn.btn-default.btn-sm
+            {:type "button"
+             :data-toggle "tooltip"
+             :data-placement "left"
+             :title "Votes"
+             :on-click
+             #(-> (swap! stage (fn [old]
+                                 (-> old
+                                     (s/transact {:links {url {:url url
+                                                               :votes #{(uuid)} ;; HACK until user is here
+                                                               :date (js/Date.)}}}
+                                                 '(fn [old new]
+                                                    (update-in old [:links]
+                                                               (fn [old new]
+                                                                 (merge-with (fn [old new]
+                                                                               (-> old
+                                                                                   (update-in [:votes] set/union (:votes new))
+                                                                                   (update-in [:date] max (:date new))))
+                                                                             old new))
+                                                               (:links new))))
+                                     repo/commit)))
+                  s/sync!)
+             #_(go
+                (let [ws-in (om/get-state owner :ws-in)
+                      ws-out (om/get-state owner :ws-out)]
+                  #_(>! ws-in {:topic :vote :data {:_id _id :upvote true}})
+                  #_(>! incoming (<! ws-out))))
+             }
+            [:span (count votes)]
+            " \u03BB"]]])))))
 
 
 (defn pagination-view [app owner {:keys [page page-size] :as state}]
@@ -358,6 +375,66 @@
        vec))
 
 
+(def update-fns {'(fn replace [old params] params)
+                 (fn replace [old params] params)
+                 '(fn [old new]
+                    (update-in old [:links]
+                               (fn [old new]
+                                 (merge-with (fn [old new]
+                                               (-> old
+                                                   (update-in [:comments] set/union (:comments new))
+                                                   (update-in [:votes] set/union (:votes new))
+                                                   (update-in [:date] max (:date new))))
+                                             old new))
+                               (:links new)))
+                 (fn [old new]
+                   (update-in old [:links]
+                              (fn [old new]
+                                (merge-with (fn [old new]
+                                              (-> old
+                                                  (update-in [:comments] set/union (:comments new))
+                                                  (update-in [:votes] set/union (:votes new))
+                                                  (update-in [:date] max (:date new))))
+                                            old new))
+                              (:links new)))
+                 '(fn [old new]
+                    (update-in old [:links]
+                               (fn [old new]
+                                 (merge-with (fn [old new]
+                                               (-> old
+                                                   (update-in [:comments] set/union (:comments new))
+                                                   (update-in [:date] max (:date new))))
+                                             old new))
+                               (:links new)))
+                 (fn [old new]
+                   (update-in old [:links]
+                              (fn [old new]
+                                (merge-with (fn [old new]
+                                              (-> old
+                                                  (update-in [:comments] set/union (:comments new))
+                                                  (update-in [:date] max (:date new))))
+                                            old new))
+                              (:links new)))
+                 '(fn [old new]
+                    (update-in old [:links]
+                               (fn [old new]
+                                 (merge-with (fn [old new]
+                                               (-> old
+                                                   (update-in [:votes] set/union (:votes new))
+                                                   (update-in [:date] max (:date new))))
+                                             old new))
+                               (:links new)))
+                 (fn [old new]
+                   (update-in old [:links]
+                              (fn [old new]
+                                (merge-with (fn [old new]
+                                              (-> old
+                                                  (update-in [:votes] set/union (:votes new))
+                                                  (update-in [:date] max (:date new))))
+                                            old new))
+                              (:links new)))})
+
+
 (defn bookmarks-view [app owner]
   "Overall view with data table and input fields"
   (reify
@@ -383,46 +460,7 @@
           (when pm
             (println "UPDATING STAGE")
             (let [nval (-> (swap! stage update-in [:meta] update meta)
-                           (s/realize-value store {'(fn replace [old params] params)
-                                                   (fn replace [old params] params)
-                                                   '(fn [old new]
-                                                      (update-in old [:links]
-                                                                 (fn [old new]
-                                                                   (merge-with (fn [old new]
-                                                                                 (-> old
-                                                                                     (update-in [:comments] set/union (:comments new))
-                                                                                     (update-in [:votes] set/union (:votes new))
-                                                                                     (update-in [:date] max (:date new))))
-                                                                               old new))
-                                                                 (:links new)))
-                                                   (fn [old new]
-                                                     (update-in old [:links]
-                                                                (fn [old new]
-                                                                  (merge-with (fn [old new]
-                                                                                (-> old
-                                                                                    (update-in [:comments] set/union (:comments new))
-                                                                                    (update-in [:votes] set/union (:votes new))
-                                                                                    (update-in [:date] max (:date new))))
-                                                                              old new))
-                                                                (:links new)))
-                                                   '(fn [old new]
-                                                      (update-in old [:links]
-                                                                 (fn [old new]
-                                                                   (merge-with (fn [old new]
-                                                                                 (-> old
-                                                                                     (update-in [:comments] set/union (:comments new))
-                                                                                     (update-in [:date] max (:date new))))
-                                                                               old new))
-                                                                 (:links new)))
-                                                   (fn [old new]
-                                                     (update-in old [:links]
-                                                                (fn [old new]
-                                                                  (merge-with (fn [old new]
-                                                                                (-> old
-                                                                                    (update-in [:comments] set/union (:comments new))
-                                                                                    (update-in [:date] max (:date new))))
-                                                                              old new))
-                                                                (:links new)))})
+                           (s/realize-value store update-fns)
                            <!
                            sort-and-join)]
               (println "NEW-VALUE:" nval)
