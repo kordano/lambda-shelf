@@ -9,6 +9,7 @@
             [geschichte.stage :refer [sync! wire-stage]]
             [geschichte.platform :refer [create-http-kit-handler!]]
             [konserve.store :refer [new-mem-store]]
+            [konserve.platform :refer [new-couch-store]]
             [compojure.handler :refer [site api]]
             [org.httpkit.server :refer [with-channel on-close on-receive run-server send!]]
             [ring.util.response :as resp]
@@ -32,8 +33,7 @@
                       :comments #{}})
 
 
-(def store (<!! (new-mem-store
-                 (atom nil))))
+(def store (<!! (new-couch-store "bookmarks")))
 
 
 (def peer (server-peer (create-http-kit-handler! "ws://localhost:8080/geschichte/ws")
