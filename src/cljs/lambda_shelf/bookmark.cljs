@@ -4,6 +4,7 @@
             [geschichte.meta :refer [update]]
             [geschichte.repo :as repo]
             [konserve.store :refer [new-mem-store]]
+            [hasch.core :refer [sha-1 hash->str]]
             [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
@@ -13,6 +14,12 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 (enable-console-print!)
+
+(defn- url->hash [u]
+  (-> u sha-1 hash->str (subs 0 8)))
+
+(def host "localhost")
+
 
 #_(repo/new-repository "repo1@shelf.polyc0l0r.net",
                       {:version 1, :type "http://shelf.polyc0l0r.net"}
@@ -70,7 +77,7 @@
                 <!
                 s/sync!
                 <!
-                (s/connect! "ws://localhost:8080/geschichte/ws")
+                (s/connect! (str  "ws://" host ":8080/geschichte/ws"))
                 <!
                 atom))
 
@@ -155,7 +162,7 @@
                (-> (swap! stage (fn [old]
                                   (-> old
                                       (s/transact {:links {new-url {:url new-url
-                                                                    :comments (if new-comment
+                                                                    :comments (if-not (empty? new-comment)
                                                                                 #{{:title ""
                                                                                    :text new-comment
                                                                                    :date (js/Date.)
@@ -188,10 +195,11 @@
       (om/set-state! owner [:input-text :title] ""))))
 
 
-(defn add-bookmark-comment [{:keys [_id] :as bookmark} owner]
+(defn add-bookmark-comment [{:keys [url] :as bookmark} owner]
   "Submit new comment and update dom"
-  (let [comment-field (om/get-node owner (str "new-comment-" _id "-group"))
-        new-comment (.-value (om/get-node owner (str "new-comment-" _id)))
+  (println "BOOKMARK for COMMENT:" bookmark)
+  (let [comment-field (om/get-node owner (str "new-comment-" (url->hash url) "-group"))
+        new-comment (.-value (om/get-node owner (str "new-comment-" (url->hash url))))
         ws-in (om/get-state owner :ws-in)
         ws-out (om/get-state owner :ws-out)]
     (if (= 0 (.-length (.trim new-comment)))
@@ -199,8 +207,30 @@
       (go
         (.add (.-classList comment-field) "csspinner")
         (.add (.-classList comment-field) "traditional")
-        (>!  ws-in {:topic :comment :data {:_id _id :comment new-comment}})
-        (>! (om/get-state owner :incoming) (<! ws-out))
+        (-> (swap! stage (fn [old]
+                           (-> old
+                               (s/transact {:links {url {:url url
+                                                         :comments (if-not (empty? new-comment)
+                                                                     #{{:title ""
+                                                                        :text new-comment
+                                                                        :date (js/Date.)
+                                                                        :author "repo1@shelf.polyc0l0r.net"}}
+                                                                     #{})
+                                                         :date (js/Date.)}}}
+                                           '(fn [old new]
+                                              (update-in old [:links]
+                                                         (fn [old new]
+                                                           (merge-with (fn [old new]
+                                                                         (-> old
+                                                                             (update-in [:comments] set/union (:comments new))
+                                                                             (update-in [:date] max (:date new))))
+                                                                       old new))
+                                                         (:links new))))
+                               repo/commit)))
+            s/sync!
+            <!)
+        #_(>!  ws-in {:topic :comment :data {:_id _id :comment new-comment}})
+        #_(>! (om/get-state owner :incoming) (<! ws-out))
         (om/set-state! owner [:input-text :modal-comment] "")
         (.remove (.-classList comment-field) "csspinner")
         (.remove (.-classList comment-field) "traditional")))))
@@ -228,7 +258,7 @@
 
 
 ;; --- views ---
-(defn bookmark-view [{:keys [title url date _id votes comments] :as bookmark} owner]
+(defn bookmark-view [{:keys [title url date votes comments] :as bookmark} owner]
   "Bookmark entry in the data table"
   (let [comment-count (count comments)]
       (reify
@@ -241,7 +271,7 @@
              [:a {:href url :target "_blank"} title]
 
              [:div.panel-collapse.collapse
-              {:id (str "comments-panel-" _id)}
+              {:id (str "comments-panel-" (url->hash url))}
 
               [:br]
 
@@ -250,10 +280,10 @@
 
               [:br]
 
-              [:div.form-group {:ref (str "new-comment-" _id "-group")}
+              [:div.form-group {:ref (str "new-comment-" (url->hash url) "-group")}
                [:textarea.form-control
                 {:type "text"
-                 :ref (str "new-comment-" _id)
+                 :ref (str "new-comment-" (url->hash url))
                  :rows 3
                  :value (:modal-comment input-text)
                  :style {:resize "vertical"}
@@ -269,7 +299,7 @@
 
             ;; comment counter and toggle
             [:td
-             [:a {:href (str "#comments-panel-" _id)
+             [:a {:href (str "#comments-panel-" (url->hash url))
                   :data-parent "#bookmark-table"
                   :data-toggle "collapse"}
               [:span.badge
@@ -288,8 +318,8 @@
                :on-click #(go
                             (let [ws-in (om/get-state owner :ws-in)
                                   ws-out (om/get-state owner :ws-out)]
-                              (>! ws-in {:topic :vote :data {:_id _id :upvote true}})
-                              (>! incoming (<! ws-out))))
+                              #_(>! ws-in {:topic :vote :data {:_id _id :upvote true}})
+                              #_(>! incoming (<! ws-out))))
                }
               [:span (count votes)]
               " \u03BB"]]])))))
@@ -374,6 +404,24 @@
                                                                                     (update-in [:votes] set/union (:votes new))
                                                                                     (update-in [:date] max (:date new))))
                                                                               old new))
+                                                                (:links new)))
+                                                   '(fn [old new]
+                                                      (update-in old [:links]
+                                                                 (fn [old new]
+                                                                   (merge-with (fn [old new]
+                                                                                 (-> old
+                                                                                     (update-in [:comments] set/union (:comments new))
+                                                                                     (update-in [:date] max (:date new))))
+                                                                               old new))
+                                                                 (:links new)))
+                                                   (fn [old new]
+                                                     (update-in old [:links]
+                                                                (fn [old new]
+                                                                  (merge-with (fn [old new]
+                                                                                (-> old
+                                                                                    (update-in [:comments] set/union (:comments new))
+                                                                                    (update-in [:date] max (:date new))))
+                                                                              old new))
                                                                 (:links new)))})
                            <!
                            sort-and-join)]
@@ -384,7 +432,7 @@
                (fn [_] nval)))
             (recur (<! pub-ch))))
         (go
-          (let [connection (<! (connect! "ws://localhost:8080/bookmark/ws"))]
+          (let [connection (<! (connect! (str "ws://" host ":8080/bookmark/ws")))]
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))
             ))
