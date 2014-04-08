@@ -459,22 +459,24 @@
             ws-out (om/get-state owner :ws-out)]
         (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
           (when pm
-            (println "UPDATING STAGE")
-            (let [nval (-> (swap! stage update-in [:meta] update meta)
-                           (s/realize-value store update-fns)
-                           <!
-                           sort-and-join)]
-              (println "NEW-VALUE:" nval)
-              (om/transact!
-               app
-               :bookmarks
-               (fn [_] nval)))
+            (let [new-stage (swap! stage update-in [:meta] update meta)]
+              (println "UPDATING STAGE")
+              (if (repo/merge-necessary? (:meta new-stage))
+                (s/sync! (swap! stage repo/merge))
+                (let [nval (-> new-stage
+                               (s/realize-value store update-fns)
+                               <!
+                               sort-and-join)]
+                  (println "NEW-VALUE:" nval)
+                  (om/transact!
+                   app
+                   :bookmarks
+                   (fn [_] nval)))))
             (recur (<! pub-ch))))
-        (go
+        #_(go
           (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]
             (om/set-state! owner :ws-in (:in connection))
-            (om/set-state! owner :ws-out (:out connection))
-            ))
+            (om/set-state! owner :ws-out (:out connection))))
         (go
           (loop []
             (let [[v c] (alts! [incoming fetch search])]
@@ -508,7 +510,7 @@
               (recur))))
 
         ;; auto update bookmarks all 5 minutes
-        (go
+        #_(go
           (while true
             (>! incoming (<! (get-edn "bookmark/init")))
             (<! (timeout 300000))))))
@@ -592,10 +594,10 @@
              :onKeyPress #(when (== (.-keyCode %) 13)
                             (if (not (blank? (:search input-text)))
                               (go
-                                (>! incoming (<! (get-edn "bookmark/init")))
+                                #_(>! incoming (<! (get-edn "bookmark/init")))
                                 (>! search (:search input-text)))
-                              (go
-                                (>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
+                              (go nil
+                                #_(>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
