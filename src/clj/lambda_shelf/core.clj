@@ -43,7 +43,7 @@
 
 (def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
-(def peer (server-peer (create-http-kit-handler! "ws://" host "/geschichte/ws")
+(def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
                        store))
 
 #_(last (-> @peer :volatile :log deref (get "ws://localhost:8080/geschichte/ws") :in))
