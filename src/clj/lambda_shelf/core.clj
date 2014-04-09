@@ -35,8 +35,8 @@
                       :comments #{}})
 
 
-(def store (<!! (new-mem-store)
-            #_(new-couch-store
+(def store (<!! #_(new-mem-store)
+            (new-couch-store
                  (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
                                                                  "localhost") ":5984"))
                                    "bookmarks")))))
