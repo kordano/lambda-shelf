@@ -147,6 +147,16 @@
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
 
 
+(defn missing-protocol-notification [app owner]
+  "Highlight missing url input field for a short time"
+  (go
+    (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
+    (set! (.-innerHTML (om/get-node owner "new-url-label")) "Wrong protocol, http:// or https:// required at beginning of URL.")
+    (<! (timeout 1300))
+    (.remove (.-classList (om/get-node owner "new-url-form")) "has-error")
+    (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
+
+
 (defn add-bookmark [app owner]
   "Collect input data, send it to server and update dom"
   (go
@@ -257,6 +267,27 @@
         (set! (.-disabled fetch-btn) false)
         (om/set-state! owner [:input-text :title] title)))))
 
+(def votes-ch (chan 100))
+
+(go-loop [url (<! votes-ch)]
+  (-> (swap! stage (fn [old]
+                     (-> old
+                         (s/transact {:links {url {:url url
+                                                   :votes #{(uuid)} ;; HACK until user is here
+                                                   :date (js/Date.)}}}
+                                     '(fn [old new]
+                                        (update-in old [:links]
+                                                   (fn [old new]
+                                                     (merge-with (fn [old new]
+                                                                   (-> old
+                                                                       (update-in [:votes] set/union (:votes new))
+                                                                       (update-in [:date] max (:date new))))
+                                                                 old new))
+                                                   (:links new))))
+                         repo/commit)))
+      s/sync!
+      <!)
+  (recur (<! votes-ch)))
 
 ;; --- views ---
 (defn bookmark-view [{:keys [title url date votes comments] :as bookmark} owner]
@@ -317,22 +348,7 @@
              :data-placement "left"
              :title "Votes"
              :on-click
-             #(-> (swap! stage (fn [old]
-                                 (-> old
-                                     (s/transact {:links {url {:url url
-                                                               :votes #{(uuid)} ;; HACK until user is here
-                                                               :date (js/Date.)}}}
-                                                 '(fn [old new]
-                                                    (update-in old [:links]
-                                                               (fn [old new]
-                                                                 (merge-with (fn [old new]
-                                                                               (-> old
-                                                                                   (update-in [:votes] set/union (:votes new))
-                                                                                   (update-in [:date] max (:date new))))
-                                                                             old new))
-                                                               (:links new))))
-                                     repo/commit)))
-                  s/sync!)
+             #(put! votes-ch url)
              #_(go
                 (let [ws-in (om/get-state owner :ws-in)
                       ws-out (om/get-state owner :ws-out)]
@@ -462,7 +478,7 @@
             (let [new-stage (swap! stage update-in [:meta] update meta)]
               (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
-                (s/sync! (swap! stage repo/merge))
+                (<! (s/sync! (swap! stage repo/merge)))
                 (let [nval (-> new-stage
                                (s/realize-value store update-fns)
                                <!
@@ -473,7 +489,7 @@
                    :bookmarks
                    (fn [_] nval)))))
             (recur (<! pub-ch))))
-        #_(go
+        (go
           (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))))
@@ -511,9 +527,9 @@
 
         ;; auto update bookmarks all 5 minutes
         #_(go
-          (while true
-            (>! incoming (<! (get-edn "bookmark/init")))
-            (<! (timeout 300000))))))
+            (while true
+              (>! incoming (<! (get-edn "bookmark/init")))
+              (<! (timeout 300000))))))
 
 
     om/IRenderState
@@ -554,9 +570,14 @@
            [:button.btn.btn-default {:type "button"
                                      :ref "fetch-btn"
                                      :data-loading-text "Fetching ..."
-                                     :on-click #(if (not (blank? (:url input-text)))
-                                                  (put! fetch (:url input-text))
-                                                  (missing-url-notification app owner))}
+                                     :on-click #(cond (blank? (:url input-text))
+                                                      (missing-url-notification app owner)
+
+                                                      (not (re-seq #"(https:)|(http:)" (:url input-text)))
+                                                      (missing-protocol-notification app owner)
+
+                                                      :defaut
+                                                      (put! fetch (:url input-text)))}
             "Fetch!"]]]
 
          [:br]
@@ -597,7 +618,7 @@
                                 #_(>! incoming (<! (get-edn "bookmark/init")))
                                 (>! search (:search input-text)))
                               (go nil
-                                #_(>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
+                                  #_(>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
