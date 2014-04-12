@@ -487,7 +487,9 @@
                   (om/transact!
                    app
                    :bookmarks
-                   (fn [_] nval)))))
+                   (fn [_] nval))))
+              (<! (timeout 500))) ;; don't merge too fast or the network will diverge
+            ;; TODO auto-balancing
             (recur (<! pub-ch))))
         (go
           (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]

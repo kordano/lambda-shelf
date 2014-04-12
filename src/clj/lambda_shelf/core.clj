@@ -20,7 +20,7 @@
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
             [lambda-shelf.warehouse :as warehouse]
-            [clojure.core.async :refer [<!! >!!]]
+            [clojure.core.async :refer [<!! >!!] :as async]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]))
 
@@ -41,26 +41,25 @@
                                                                  "localhost") ":5984"))
                                    "bookmarks")))))
 
+
 (def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
 (def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
                        store))
 
-#_(last (-> @peer :volatile :log deref (get "ws://localhost:8080/geschichte/ws") :in))
+(comment
+  (pprint (-> @peer :volatile :log deref))
 
+  (swap! peer (fn [old]
+                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
+                              store)))
 
-(def stage (->> (repo/new-repository "shelf@polyc0l0r.net"
-                                     {:version 1
-                                      :type "lambda-shelf"}
-                                     "A bookmarking application."
-                                     false
-                                     {:links #{}
-                                      :comments #{}})
-                (wire-stage peer)
-                <!!
-                sync!
-                <!!
-                atom))
+  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
+  (keys (-> store :state deref))
+  (async/go
+    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
+                                  (async/timeout 1000)]))))
+
 
 (defn now [] (java.util.Date.))
 
@@ -108,7 +107,7 @@
   (with-channel request channel
     (on-close channel
               (fn [status]
-                (println "channel closed: " status)))
+                (println "bookmark channel closed: " status)))
     (on-receive channel
                 (fn [data]
                   (println (str "Incoming package: " (now)))
