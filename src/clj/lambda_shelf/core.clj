@@ -35,6 +35,7 @@
                       :comments #{}})
 
 
+;; supply some store
 (def store (<!! #_(new-mem-store)
             (new-couch-store
                  (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
@@ -42,8 +43,10 @@
                                    "bookmarks")))))
 
 
+;; TODO find better way...
 (def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
+;; start synching
 (def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
                        store))
 
@@ -59,10 +62,10 @@
   (async/go
     (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
                                   (async/timeout 1000)]))))
+;; geschichte is now setup
 
 
-(defn now [] (java.util.Date.))
-
+;; friend authentication (example still)
 (def users {"root" {:username "root"
                     :password (creds/hash-bcrypt "lisp")
                     :roles #{::admin}}
@@ -110,7 +113,7 @@
                 (println "bookmark channel closed: " status)))
     (on-receive channel
                 (fn [data]
-                  (println (str "Incoming package: " (now)))
+                  (println (str "Incoming package: " (java.util.Date.)))
                   (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
@@ -139,6 +142,7 @@
   (GET "/*" req (friend/authorize #{::user} (views/page req))))
 
 
+;; TODO secure geschichte on user-repo basis
 (def secured-app
   (-> handler
       (friend/authenticate

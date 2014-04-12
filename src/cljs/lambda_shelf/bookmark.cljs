@@ -15,13 +15,12 @@
 
 (enable-console-print!)
 
-(defn- url->hash [u]
-  (-> u sha-1 hash->str (subs 0 8)))
-
 
 (def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
+;; define live coding vars for geschichte primitives for now
 
+;; the following repository was created with:
 #_(repo/new-repository "repo1@shelf.polyc0l0r.net",
                       {:version 1, :type "http://shelf.polyc0l0r.net"}
                       "A bookmark app."
@@ -37,108 +36,75 @@
                                 :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
                                 :title "An introduction to Magit, an Emacs mode for Git."}}})
 
+
+
+;; a channel where all (metadata)-updates will come in through
+;; and which we will realize in a ui through om
 (def pub-ch (chan))
 
-(go (def store (<! (new-mem-store)))
+(go
+  ;; kv-store, platform/app specific, memory is for testing
+  (def store (<! (new-mem-store)))
 
-    (def peer (client-peer "shelf-client" store))
+  ;; create a peer, which implements the synching protocol
+  (def peer (client-peer "shelf-client" store))
 
-    (def stage (->
-                {:meta {:causal-order {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749" []},
-                        :last-update #inst "2014-04-07T15:57:48.581-00:00",
-                        :head "master",
-                        :public true,
-                        :branches {"master" {:heads #{#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"}}},
-                        :schema {:type "http://github.com/ghubber/geschichte", :version 1},
-                        :pull-requests {},
-                        :id #uuid "84473475-2c87-470e-8774-9de66e665812",
-                        :description "A bookmark app."},
-                 :author "repo1@shelf.polyc0l0r.net",
-                 :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
-                 :transactions [],
-                 :type :meta-sub,
-                 :new-values {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"
-                              {:transactions
-                               [[{:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-                                          {:comments #{{:title "first!!!!",
-                                                        :text "great news.",
-                                                        :date #inst "2014-04-07T13:30:14.686-00:00",
-                                                        :author "eve"}},
-                                           :date #inst "2014-04-07T13:27:23.438-00:00",
-                                           :author "eve",
-                                           :votes #{"eve"},
-                                           :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-                                           :title "An introduction to Magit, an Emacs mode for Git."}}}
-                                 '(fn replace [old params] params)]],
-                               :parents [],
-                               :ts #inst "2014-04-07T15:57:48.581-00:00",
-                               :author "repo1@shelf.polyc0l0r.net",
-                               :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
-                (s/wire-stage peer)
-                <!
-                s/sync!
-                <!
-                (s/connect! (str  "ws://" host "/geschichte/ws"))
-                <!
-                atom))
+  ;; connect a stage to it and instruct the peer to connect to a remote peer
+  (def stage (-> ;; will be loaded from kv-store
+              {:meta {:causal-order {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749" []},
+                      :last-update #inst "2014-04-07T15:57:48.581-00:00",
+                      :head "master",
+                      :public true,
+                      :branches {"master" {:heads #{#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"}}},
+                      :schema {:type "http://github.com/ghubber/geschichte", :version 1},
+                      :pull-requests {},
+                      :id #uuid "84473475-2c87-470e-8774-9de66e665812",
+                      :description "A bookmark app."},
+               :author "repo1@shelf.polyc0l0r.net",
+               :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
+               :transactions [],
+               :type :meta-sub,
+               :new-values {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"
+                            {:transactions
+                             [[{:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
+                                        {:comments #{{:title "first!!!!",
+                                                      :text "great news.",
+                                                      :date #inst "2014-04-07T13:30:14.686-00:00",
+                                                      :author "eve"}},
+                                         :date #inst "2014-04-07T13:27:23.438-00:00",
+                                         :author "eve",
+                                         :votes #{"eve"},
+                                         :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
+                                         :title "An introduction to Magit, an Emacs mode for Git."}}}
+                               '(fn replace [old params] params)]],
+                             :parents [],
+                             :ts #inst "2014-04-07T15:57:48.581-00:00",
+                             :author "repo1@shelf.polyc0l0r.net",
+                             :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
+              (s/wire-stage peer)
+              <!
+              s/sync!
+              <!
+              (s/connect! (str  "ws://" host "/geschichte/ws"))
+              <!
+              atom))
 
-    (let [[p out] (:chans @stage)]
-      (>! pub-ch @stage) ;; init
-      (sub p :meta-pub pub-ch)))
+  ;; pump updates, starting with init value (safe start)
+  (let [[p out] (:chans @stage)]
+    (>! pub-ch @stage) ;; init
+    (sub p :meta-pub pub-ch)))
 
 
-
-;; example data and update
-#_((fn [old new]
-   (update-in old [:links]
-              (fn [old new]
-                (merge-with #(-> %1
-                                 (update-in [:comments] set/union (:comments %2))
-                                 (update-in [:votes] set/union (:votes %2))
-                                 (update-in [:date] max (:date %2)))
-                            old new))
-              (:links new)))
- {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-          {:comments #{{:title "first!!!!"
-                        :text "great news."
-                        :date #inst "2014-04-07T13:30:14.686-00:00"
-                        :author "eve"}},
-           :date #inst "2014-04-07T13:27:23.438-00:00",
-           :author "eve"
-           :votes #{"eve"},
-           :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-           :title "An introduction to Magit, an Emacs mode for Git."}}}
- {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-          {:comments #{{:title "first!!!!"
-                        :text "great news."
-                        :date  #inst "2014-04-07T13:20:12.147-00:00"
-                        :author "root"}},
-           :date #inst "2014-04-07T13:37:23.438-00:00",
-           :author "root"
-           :votes #{"eve" "root"},
-           :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-           :title "An introduction to Magit, an Emacs mode for Git."}}})
-
-;; authenticate by user-id, authorize to read public repos and push to own
-;; encryption of transaction with repo key encrypted by userkeys, public key scheme
-
-;;  data-model
-;; grow sets of links and comments, realize stage value, sort+join on load
-;; on meta-pub, rebase on head of master, realize new stage value -> reload
-;; transactions:
-
-;; things needed for serious impl:
-;; - relational data management - datalog
-;; - encryption: {:keys {:userA [12 38 28] :userB [38 56 89]}
-
+;; geschichte is setup
 
 
 (defn handle-text-change [e owner {:keys [input-text]} input-type]
   (om/set-state! owner [:input-text input-type] (.. e -target -value)))
 
 
-(defn missing-url-notification [app owner]
+(defn missing-url-notification
   "Highlight missing url input field for a short time"
+  [app owner]
   (go
     (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "URL missing")
@@ -147,18 +113,20 @@
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
 
 
-(defn missing-protocol-notification [app owner]
+(defn missing-protocol-notification
   "Highlight missing url input field for a short time"
+  [app owner]
   (go
     (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Wrong protocol, http:// or https:// required at beginning of URL.")
-    (<! (timeout 1300))
+    (<! (timeout 1800))
     (.remove (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
 
 
-(defn add-bookmark [app owner]
+(defn add-bookmark
   "Collect input data, send it to server and update dom"
+  [app owner]
   (go
     (let [new-url (.-value (om/get-node owner "new-url"))
           new-title (.-value (om/get-node owner "new-title"))
@@ -170,35 +138,36 @@
       (set! (.-innerHTML add-btn) "Adding...")
       (set! (.-disabled add-btn) true)
       (println "NEW STAGE"
-               (-> (swap! stage (fn [old]
-                                  (-> old
-                                      (s/transact {:links {new-url {:url new-url
-                                                                    :comments (if-not (empty? new-comment)
-                                                                                #{{:title ""
-                                                                                   :text new-comment
-                                                                                   :date (js/Date.)
-                                                                                   :author "repo1@shelf.polyc0l0r.net"}}
-                                                                                #{})
-                                                                    :title new-title
-                                                                    :date (js/Date.)
-                                                                    :votes #{}
-                                                                    :author "repo1@shelf.polyc0l0r.net"}}}
-                                                  '(fn [old new]
-                                                     (update-in old [:links]
-                                                                (fn [old new]
-                                                                  (merge-with (fn [old new]
-                                                                                (-> old
-                                                                                    (update-in [:comments] set/union (:comments new))
-                                                                                    (update-in [:votes] set/union (:votes new))
-                                                                                    (update-in [:date] max (:date new))))
-                                                                              old new))
-                                                                (:links new))))
-                                      repo/commit)))
+               (-> (swap! stage
+                          (fn [old]
+                            (-> old
+                                (s/transact {:links ;; parameter data
+                                             {new-url
+                                              {:url new-url
+                                               :comments (if-not (empty? new-comment)
+                                                           #{{:title ""
+                                                              :text new-comment
+                                                              :date (js/Date.)
+                                                              :author "repo1@shelf.polyc0l0r.net"}}
+                                                           #{})
+                                               :title new-title
+                                               :date (js/Date.)
+                                               :votes #{}
+                                               :author "repo1@shelf.polyc0l0r.net"}}}
+                                            '(fn [old new] ;; function to apply the parameters
+                                               (update-in old [:links]
+                                                          (fn [old new]
+                                                            (merge-with
+                                                             (fn [old new]
+                                                               (-> old
+                                                                   (update-in [:comments] set/union (:comments new))
+                                                                   (update-in [:votes] set/union (:votes new))
+                                                                   (update-in [:date] max (:date new))))
+                                                             old new))
+                                                          (:links new))))
+                                repo/commit)))
                    s/sync!
                    <!))
-      #_(>! ws-in package)
-      #_(let [current-bookmarks (-> ws-out <! :data)]
-          (>! (om/get-state owner :incoming) current-bookmarks))
       (set! (.-innerHTML add-btn) "Add!")
       (set! (.-disabled add-btn) false)
       (om/set-state! owner [:input-text :url] "")
@@ -206,9 +175,13 @@
       (om/set-state! owner [:input-text :title] ""))))
 
 
-(defn add-bookmark-comment [{:keys [url] :as bookmark} owner]
+(defn- url->hash [u]
+  (-> u sha-1 hash->str (subs 0 8)))
+
+
+(defn add-bookmark-comment
   "Submit new comment and update dom"
-  (println "BOOKMARK for COMMENT:" bookmark)
+  [{:keys [url] :as bookmark} owner]
   (let [comment-field (om/get-node owner (str "new-comment-" (url->hash url) "-group"))
         new-comment (.-value (om/get-node owner (str "new-comment-" (url->hash url))))
         ws-in (om/get-state owner :ws-in)
@@ -218,37 +191,39 @@
       (go
         (.add (.-classList comment-field) "csspinner")
         (.add (.-classList comment-field) "traditional")
-        (-> (swap! stage (fn [old]
-                           (-> old
-                               (s/transact {:links {url {:url url
-                                                         :comments (if-not (empty? new-comment)
-                                                                     #{{:title ""
-                                                                        :text new-comment
-                                                                        :date (js/Date.)
-                                                                        :author "repo1@shelf.polyc0l0r.net"}}
-                                                                     #{})
-                                                         :date (js/Date.)}}}
-                                           '(fn [old new]
-                                              (update-in old [:links]
-                                                         (fn [old new]
-                                                           (merge-with (fn [old new]
-                                                                         (-> old
-                                                                             (update-in [:comments] set/union (:comments new))
-                                                                             (update-in [:date] max (:date new))))
-                                                                       old new))
-                                                         (:links new))))
-                               repo/commit)))
+        (-> (swap! stage
+                   (fn [old]
+                     (-> old
+                         (s/transact {:links
+                                      {url {:url url
+                                            :comments (if-not (empty? new-comment)
+                                                        #{{:title ""
+                                                           :text new-comment
+                                                           :date (js/Date.)
+                                                           :author "repo1@shelf.polyc0l0r.net"}}
+                                                        #{})
+                                            :date (js/Date.)}}}
+                                     '(fn [old new]
+                                        (update-in old [:links]
+                                                   (fn [old new]
+                                                     (merge-with
+                                                      (fn [old new]
+                                                        (-> old
+                                                            (update-in [:comments] set/union (:comments new))
+                                                            (update-in [:date] max (:date new))))
+                                                      old new))
+                                                   (:links new))))
+                         repo/commit)))
             s/sync!
             <!)
-        #_(>!  ws-in {:topic :comment :data {:_id _id :comment new-comment}})
-        #_(>! (om/get-state owner :incoming) (<! ws-out))
         (om/set-state! owner [:input-text :modal-comment] "")
         (.remove (.-classList comment-field) "csspinner")
         (.remove (.-classList comment-field) "traditional")))))
 
 
-(defn fetch-url-title [app owner url]
+(defn fetch-url-title
   "Fetch title element of given site and write it to title input field"
+  [app owner url]
   (go
     (let [package {:topic :fetch-title :data {:url url}}
           fetch-btn (om/get-node owner "fetch-btn")
@@ -267,31 +242,35 @@
         (set! (.-disabled fetch-btn) false)
         (om/set-state! owner [:input-text :title] title)))))
 
+;; serialize vote events, the others cannot be generated that fast
+;; TODO find simple stage-update loop vs. input-loop sync pattern
 (def votes-ch (chan 100))
 
 (go-loop [url (<! votes-ch)]
-  (-> (swap! stage (fn [old]
-                     (-> old
-                         (s/transact {:links {url {:url url
-                                                   :votes #{(uuid)} ;; HACK until user is here
-                                                   :date (js/Date.)}}}
-                                     '(fn [old new]
-                                        (update-in old [:links]
-                                                   (fn [old new]
-                                                     (merge-with (fn [old new]
-                                                                   (-> old
-                                                                       (update-in [:votes] set/union (:votes new))
-                                                                       (update-in [:date] max (:date new))))
-                                                                 old new))
-                                                   (:links new))))
-                         repo/commit)))
+  (-> (swap! stage
+             (fn [old]
+               (-> old
+                   (s/transact {:links {url {:url url
+                                             :votes #{(uuid)} ;; HACK until user is here
+                                             :date (js/Date.)}}}
+                               '(fn [old new]
+                                  (update-in old [:links]
+                                             (fn [old new]
+                                               (merge-with (fn [old new]
+                                                             (-> old
+                                                                 (update-in [:votes] set/union (:votes new))
+                                                                 (update-in [:date] max (:date new))))
+                                                           old new))
+                                             (:links new))))
+                   repo/commit)))
       s/sync!
       <!)
   (recur (<! votes-ch)))
 
 ;; --- views ---
-(defn bookmark-view [{:keys [title url date votes comments] :as bookmark} owner]
+(defn bookmark-view
   "Bookmark entry in the data table"
+  [{:keys [title url date votes comments] :as bookmark} owner]
   (let [comment-count (count comments)]
     (reify
       om/IRenderState
@@ -348,19 +327,14 @@
              :data-placement "left"
              :title "Votes"
              :on-click
-             #(put! votes-ch url)
-             #_(go
-                (let [ws-in (om/get-state owner :ws-in)
-                      ws-out (om/get-state owner :ws-out)]
-                  #_(>! ws-in {:topic :vote :data {:_id _id :upvote true}})
-                  #_(>! incoming (<! ws-out))))
-             }
+             #(put! votes-ch url)}
             [:span (count votes)]
             " \u03BB"]]])))))
 
 
-(defn pagination-view [app owner {:keys [page page-size] :as state}]
+(defn pagination-view
   "Simple paging with selectable pages"
+  [app owner {:keys [page page-size] :as state}]
   (let [page-count (/ (count (:bookmarks app)) page-size)]
     [:div.text-center
      [:ul.pagination
@@ -383,7 +357,9 @@
         [:li [:a {:href "#" :on-click #(om/set-state! owner :page (inc page))} "\u00BB"]])]]))
 
 
-(defn sort-and-join [repo-val]
+(defn sort-and-join
+  "Calculates viewable state."
+  [repo-val]
   (->> repo-val
        :links
        vals
@@ -392,6 +368,9 @@
        vec))
 
 
+;; static function to eval map for repo transaction functions
+;; this can be done differently (e.g. per symbols), but it is much
+;; more elegant and safe to track the table. schema-specific
 (def update-fns {'(fn replace [old params] params)
                  (fn replace [old params] params)
                  '(fn [old new]
@@ -452,8 +431,9 @@
                               (:links new)))})
 
 
-(defn bookmarks-view [app owner]
+(defn bookmarks-view
   "Overall view with data table and input fields"
+  [app owner]
   (reify
     om/IInitState
     (init-state [_]
@@ -489,7 +469,7 @@
                    :bookmarks
                    (fn [_] nval))))
               (<! (timeout 500))) ;; don't merge too fast or the network will diverge
-            ;; TODO auto-balancing
+            ;; TODO might not work, auto-balancing
             (recur (<! pub-ch))))
         (go
           (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]
@@ -497,7 +477,7 @@
             (om/set-state! owner :ws-out (:out connection))))
         (go
           (loop []
-            (let [[v c] (alts! [incoming fetch search])]
+            (let [[v c] (alts! [fetch search])] ;; todo split in separate loops
               (condp = c
                 search (do
                          (om/transact!
@@ -516,22 +496,8 @@
                                        xs)))))
                          (om/set-state! owner :page 0))
 
-                incoming nil #_(om/transact!
-                                app
-                                :bookmarks
-                                (fn [_]
-                                  (vec
-                                   (sort-by :date >
-                                            (map (fn [x] (update-in x [:date] #(js/Date. %))) v)))))
-
                 fetch (fetch-url-title app owner v))
-              (recur))))
-
-        ;; auto update bookmarks all 5 minutes
-        #_(go
-            (while true
-              (>! incoming (<! (get-edn "bookmark/init")))
-              (<! (timeout 300000))))))
+              (recur))))))
 
 
     om/IRenderState
@@ -617,10 +583,10 @@
              :onKeyPress #(when (== (.-keyCode %) 13)
                             (if (not (blank? (:search input-text)))
                               (go
-                                #_(>! incoming (<! (get-edn "bookmark/init")))
                                 (>! search (:search input-text)))
                               (go nil
-                                  #_(>! incoming (<! (get-edn "bookmark/init"))))))}]]]]
+                                  ;; TODO rerealize stage value
+                                  )))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
