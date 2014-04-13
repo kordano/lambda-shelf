@@ -1,12 +1,12 @@
 # lambda-shelf
 
-A basic reddit-like link collector using David Nolens React interface [om](https://github.com/swannodette/om "om") for the frontend, http-kit for backend server and couchdb as backend storage.
+A basic reddit-like link collector using David Nolen's React interface [om](https://github.com/swannodette/om "om") for the frontend and [geschichte](https://github.com/ghubber/geschichte) for P2P synching with repository semantics (replacing a traditional backend).
 
 Enjoy live application [here](http://shelf.polyc0l0r.net/ "Lambda Shelf").
 
 ## Usage
 
-A [couchdb](http://couchdb.apache.org "couchdb site") instance is required.
+A [couchdb](http://couchdb.apache.org "couchdb site") instance for [konserve](https://github.com/ghubber/konserve) is required.
 
 Adjust database credentials in [warehouse.clj](https://github.com/kordano/lambda-shelf/blob/master/src/clj/lambda_shelf/warehouse.clj "warehouse file"). Refer to [clutch](https://github.com/clojure-clutch/clutch "clutch") for configuration.
 
@@ -17,7 +17,7 @@ lein cljsbuild once
 
 Start server
 ```
-lein run
+lein run 8080
 ```
 
 Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
@@ -28,7 +28,7 @@ A configured Dockerfile can be found [here](https://github.com/kordano/docker-sh
 
 ## License
 
-Copyright © 2014 Konrad Kühne
+Copyright © 2014 Konrad Kühne, Christian Weilbach
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

@@ -27,8 +27,7 @@
                  [om "0.5.0"]
                  [http-kit "2.1.18"]
                  [com.facebook/react "0.9.0.1"]
-                 [konserve "0.1.0-SNAPSHOT"]
-                 [geschichte "0.1.0-SNAPSHOT"]
+                 [net.polyc0l0r/geschichte "0.1.0-SNAPSHOT"]
                  [hiccups "0.3.0"]
                  [sablono "0.2.14"]]
 
