@@ -42,8 +42,8 @@
               :title "Logout"}
           [:span.glyphicon.glyphicon-off]]]]]]]
     [:div#main.container]
-    [:script {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"}]
-    [:script {:src "http://fb.me/react-0.9.0.min.js"}]
+    [:script {:src "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"}]
+    [:script {:src "//fb.me/react-0.9.0.min.js"}]
     [:script {:src "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"}]
     [:script {:src "js/main.js"}]
     [:script (browser-connected-repl-js)])))

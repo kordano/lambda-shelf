@@ -45,7 +45,7 @@
 (def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
 ;; start synching
-(def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
+(def peer (server-peer (create-http-kit-handler! (str "wss://" host "/geschichte/ws"))
                        store))
 
 (comment

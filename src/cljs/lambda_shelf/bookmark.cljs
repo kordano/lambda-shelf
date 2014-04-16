@@ -85,7 +85,7 @@
               <!
               s/sync!
               <!
-              (s/connect! (str  "ws://" host "/geschichte/ws"))
+              (s/connect! (str "wss://" host "/geschichte/ws"))
               <!
               atom))
 
