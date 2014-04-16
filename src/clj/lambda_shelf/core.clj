@@ -17,21 +17,9 @@
             [cemerick.friend.credentials :as creds]
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
-            [lambda-shelf.warehouse :as warehouse]
             [clojure.core.async :refer [<!! >!!] :as async]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]))
-
-#_(repo/new-repository "shelf@polyc0l0r.net"
-                     {:version 1
-                      :type "lambda-shelf"}
-                     "A bookmarking application."
-                     false
-                     ;; describe schema here
-                     {:links #{{:url "http://slashdot.org"
-                                :title "Newz"}}
-                      :comments #{}})
-
 
 ;; supply some store
 (def store (<!! #_(new-mem-store)
@@ -42,24 +30,11 @@
 
 
 ;; TODO find better way...
-(def host #_"localhost:8080" "shelf.polyc0l0r.net")
+(def host #_"localhost:8080" "shelf.polyc0l0r.net:8443")
 
 ;; start synching
 (def peer (server-peer (create-http-kit-handler! (str "wss://" host "/geschichte/ws"))
                        store))
-
-(comment
-  (pprint (-> @peer :volatile :log deref))
-
-  (swap! peer (fn [old]
-                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
-                              store)))
-
-  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
-  (keys (-> store :state deref))
-  (async/go
-    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
-                                  (async/timeout 1000)]))))
 ;; geschichte is now setup
 
 
@@ -89,18 +64,7 @@
 (defn dispatch-bookmark [{:keys [topic data] :as incoming}]
   (case topic
     :greeting {:data "Greetings Master!" :topic :greeting}
-    :get-all (warehouse/get-all-bookmarks)
     :fetch-title {:title (fetch-url-title (:url data))}
-    :add (do (warehouse/insert-bookmark
-              (update-in
-               data
-               [:title]
-               #(if (= "" %) (fetch-url-title (:url data)) %)))
-             {:data (warehouse/get-all-bookmarks)})
-    :vote (do (warehouse/vote-bookmark data)
-              (warehouse/get-all-bookmarks))
-    :comment (do (warehouse/comment-bookmark data)
-                 (warehouse/get-all-bookmarks))
     "DEFAULT"))
 
 
@@ -117,16 +81,6 @@
 
 (defroutes handler
   (resources "/")
-
-  (GET "/bookmark/init" []
-       {:status 200
-        :headers {"Content-Type" "application/edn"}
-        :body (str (warehouse/get-all-bookmarks))})
-
-  (GET "/bookmark/export.edn" []
-       {:status 200
-        :headers {"Content-Type" "application/edn"}
-        :body (str (warehouse/get-all-bookmarks))})
 
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
 
@@ -163,7 +117,6 @@
 
 (defn -main [& args]
   (println (first args))
-  (warehouse/init-db)
   (let [port (Integer. (or (System/getenv "PORT") (first args)))]
     (start-server port)))
 
@@ -172,3 +125,17 @@
 #_(def server (start-server 8080))
 
 #_(server)
+
+
+(comment
+  (pprint (-> @peer :volatile :log deref))
+
+  (swap! peer (fn [old]
+                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
+                              store)))
+
+  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
+  (keys (-> store :state deref))
+  (async/go
+    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
+                                  (async/timeout 1000)]))))
