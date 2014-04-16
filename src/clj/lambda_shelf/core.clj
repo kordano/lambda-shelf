@@ -98,6 +98,7 @@
 (def secured-app
   (binding [friend/*default-scheme-ports* {:https 8443}]
     (-> handler
+        (friend/requires-scheme :https)
         (friend/authenticate
          {:allow-anon? true
           :login-uri "/login"
@@ -107,7 +108,6 @@
                                      (resp/status 401))
           :credential-fn #(creds/bcrypt-credential-fn users %)
           :workflows [(workflows/interactive-form)]})
-        (friend/requires-scheme :https)
         site)))
 
 
