@@ -453,8 +453,10 @@
             search (om/get-state owner :search)
             ws-in (om/get-state owner :ws-in)
             ws-out (om/get-state owner :ws-out)]
-        (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
+        (go-loop [{:keys [meta] :as pm} (<! pub-ch)
+                  slowdown-ch (timeout 0)]
           (when pm
+            (<! (slowdown-ch))
             (let [new-stage (swap! stage update-in [:meta] update meta)]
               (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
@@ -467,12 +469,10 @@
                   (om/transact!
                    app
                    :bookmarks
-                   (fn [_] nval))))
-              (<! (timeout 500))) ;; don't merge too fast or the network will diverge
-            ;; TODO might not work, auto-balancing
-            (recur (<! pub-ch))))
+                   (fn [_] nval))))) ;; don't merge too fast or the network will diverge
+            (recur (<! pub-ch) (timeout 300))))
         (go
-          (let [connection (<! (connect! (str "ws://" host "/bookmark/ws")))]
+          (let [connection (<! (connect! (str "wss://" host "/bookmark/ws")))]
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))))
         (go
