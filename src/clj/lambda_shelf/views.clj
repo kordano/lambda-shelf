@@ -50,7 +50,8 @@
     [:div#main.container]
     [:script {:src "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"}]
     [:script {:src #_"//fb.me/react-0.9.0.min.js"
-              "//dragon.ak.fbcdn.net/hphotos-ak-prn1/t39.3284/851546_567506653344537_804598273_n.js"}]
+              #_"//dragon.ak.fbcdn.net/hphotos-ak-prn1/t39.3284/851546_567506653344537_804598273_n.js"
+              "react/react-0.9.0.min.js"}]
     [:script {:src "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"}]
     [:script {:src "js/main.js"}]
     [:script (browser-connected-repl-js)])))
