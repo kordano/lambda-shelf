@@ -96,17 +96,19 @@
 
 ;; TODO secure geschichte on user-repo basis
 (def secured-app
-  (-> handler
-      (friend/authenticate
-        {:allow-anon? true
-         :login-uri "/login"
-         :default-landing-uri "/"
-         :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
-                                    resp/response
-                                    (resp/status 401))
-         :credential-fn #(creds/bcrypt-credential-fn users %)
-         :workflows [(workflows/interactive-form)]})
-      site))
+  (binding [friend/*default-scheme-ports* {:https 8443}]
+    (-> handler
+        (friend/authenticate
+         {:allow-anon? true
+          :login-uri "/login"
+          :default-landing-uri "/"
+          :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
+                                     resp/response
+                                     (resp/status 401))
+          :credential-fn #(creds/bcrypt-credential-fn users %)
+          :workflows [(workflows/interactive-form)]})
+        (friend/requires-scheme :https)
+        site)))
 
 
 (defn start-server [port]
@@ -122,7 +124,7 @@
 
 ;; --- TESTING ---
 
-#_(def server (start-server 8080))
+#_(def server (start-server 8443))
 
 #_(server)
 
