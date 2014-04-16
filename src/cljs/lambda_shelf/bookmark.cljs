@@ -456,7 +456,7 @@
         (go-loop [{:keys [meta] :as pm} (<! pub-ch)
                   slowdown-ch (timeout 0)]
           (when pm
-            (<! (slowdown-ch))
+            (<! slowdown-ch)
             (let [new-stage (swap! stage update-in [:meta] update meta)]
               (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
