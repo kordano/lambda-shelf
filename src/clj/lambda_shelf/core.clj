@@ -97,7 +97,7 @@
 ;; TODO secure geschichte on user-repo basis
 (def secured-app
   (-> handler
-      (friend/requires-scheme-with-proxy :https {:https 8443})
+      (friend/requires-scheme-with-proxy :https {:https 443})
       (friend/authenticate
        {:allow-anon? true
         :login-uri "/login"
