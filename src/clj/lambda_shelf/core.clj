@@ -30,7 +30,7 @@
 
 
 ;; TODO find better way...
-(def host #_"localhost:8080" "shelf.polyc0l0r.net:8443")
+(def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
 ;; start synching
 (def peer (server-peer (create-http-kit-handler! (str "wss://" host "/geschichte/ws"))

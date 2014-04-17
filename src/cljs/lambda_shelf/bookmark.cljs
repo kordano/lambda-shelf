@@ -16,7 +16,7 @@
 (enable-console-print!)
 
 
-(def host #_"localhost:8080" "shelf.polyc0l0r.net:8443")
+(def host #_"localhost:8080" "shelf.polyc0l0r.net")
 
 ;; define live coding vars for geschichte primitives for now
 
