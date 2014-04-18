@@ -2,7 +2,7 @@
 
 A basic reddit-like link collector using David Nolen's React interface [om](https://github.com/swannodette/om "om") for the frontend and [geschichte](https://github.com/ghubber/geschichte) for P2P synching with repository semantics (replacing a traditional backend).
 
-Enjoy live application [here](https://shelf.polyc0l0r.net:8443/login "Lambda Shelf").
+Enjoy live application [here](https://shelf.polyc0l0r.net "Lambda Shelf").
 
 ## Usage
 
