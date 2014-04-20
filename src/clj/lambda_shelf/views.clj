@@ -94,13 +94,6 @@
           {:type "submit"
            :value "Register"}]]]]]])))
 
-(deftemplate register
-  (io/resource "public/index.html")
-  [req]
-  [:body]
-  (append
-   (html
-    )))
 
 (deftemplate login
   (io/resource "public/index.html")
