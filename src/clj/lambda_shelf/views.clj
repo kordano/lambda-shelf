@@ -16,6 +16,12 @@
   [:body]
   (append
    (html
+    ;; fork me on github ribbon
+    [:a {:href "https://github.com/kordano/lambda-shelf"}
+     [:img {:style "position: absolute; top: 0; right: 0; border: 0; z-index: 15;"
+            :src "https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67"
+            :alt "Fork me on GitHub"
+            :data-canonical-src "https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"}]]
     [:div.navbar.navbar-default {:role "navigation"}
      [:div.container
       [:div.navbar-header
@@ -46,9 +52,9 @@
      [:div.well.well-sm
       (quotes/random-quote)]]
     [:div#main.container]
-    [:script {:src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"}]
-    [:script {:src "http://fb.me/react-0.9.0.min.js"}]
-    [:script {:src "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"}]
+    [:script {:src "static/jquery/jquery-1.11.0.min.js"}]
+    [:script {:src "static/react/react-0.9.0.min.js"}]
+    [:script {:src "static/bootstrap/bootstrap-3.1.1-dist/js/bootstrap.min.js"}]
     [:script {:src "js/main.js"}]
     [:script (browser-connected-repl-js)])))
 

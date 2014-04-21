@@ -18,7 +18,6 @@
             [cemerick.friend.credentials :as creds]
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
-            [lambda-shelf.warehouse :as warehouse]
             [clojure.core.async :refer [<!! >!!] :as async]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]))
@@ -95,12 +94,12 @@
 ;; TODO find better way...
 
 ;; start synching
-(def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
+(def peer (server-peer (create-http-kit-handler! (str "wss://" host "/geschichte/ws"))
                        store))
 
+;; geschichte is now setup
 
 (derive ::admin ::user)
-
 
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
@@ -118,18 +117,7 @@
 (defn dispatch-bookmark [{:keys [topic data] :as incoming}]
   (case topic
     :greeting {:data "Greetings Master!" :topic :greeting}
-    :get-all (warehouse/get-all-bookmarks)
     :fetch-title {:title (fetch-url-title (:url data))}
-    :add (do (warehouse/insert-bookmark
-              (update-in
-               data
-               [:title]
-               #(if (= "" %) (fetch-url-title (:url data)) %)))
-             {:data (warehouse/get-all-bookmarks)})
-    :vote (do (warehouse/vote-bookmark data)
-              (warehouse/get-all-bookmarks))
-    :comment (do (warehouse/comment-bookmark data)
-                 (warehouse/get-all-bookmarks))
     "DEFAULT"))
 
 
@@ -146,11 +134,6 @@
 
 (defroutes handler
   (resources "/")
-
-  (GET "/bookmark/export.edn" []
-       {:status 200
-        :headers {"Content-Type" "application/edn"}
-        :body (str (warehouse/get-all-bookmarks))})
 
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
 
@@ -188,6 +171,7 @@
 ;; TODO secure geschichte on user-repo basis
 (def secured-app
   (-> handler
+      (friend/requires-scheme-with-proxy :https {:https 443})
       (friend/authenticate
         {:allow-anon? true
          :login-uri "/login"
@@ -208,14 +192,30 @@
 
 (defn -main [& args]
   (println (first args))
-  (warehouse/init-db)
   (let [port (Integer. (or (System/getenv "PORT") (first args)))]
     (start-server port)))
 
 ;; --- TESTING ---
 
-#_(def server (start-server 8080))
+#_(def server (start-server 8443))
 
 #_(server)
 
-#_(<!! (s/realize-value @user-stage user-store eval))
+(comment
+  (<!! (s/realize-value @user-stage user-store eval))
+
+  (pprint (-> @peer :volatile :log deref))
+
+  (swap! peer (fn [old]
+                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
+                              store)))
+
+  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
+
+  (keys (-> store :state deref))
+
+  (async/go
+    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
+                                  (async/timeout 1000)])))
+
+  )
