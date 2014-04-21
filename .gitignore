@@ -3,6 +3,7 @@
 /checkouts
 /resources/public/js
 /resources/public/css
+/resources/public/static
 /out
 .#*
 pom.xml
