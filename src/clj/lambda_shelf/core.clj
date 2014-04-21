@@ -5,7 +5,8 @@
             [compojure.route :refer [resources]]
             [compojure.core :refer [GET POST defroutes]]
             [geschichte.repo :as repo]
-            [geschichte.sync :refer [server-peer]]
+            [geschichte.stage :as s]
+            [geschichte.sync :refer [server-peer client-peer]]
             [geschichte.platform :refer [create-http-kit-handler!]]
             [konserve.store :refer [new-mem-store]]
             [konserve.platform :refer [new-couch-store]]
@@ -22,16 +23,8 @@
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]))
 
-#_(repo/new-repository "shelf@polyc0l0r.net"
-                     {:version 1
-                      :type "lambda-shelf"}
-                     "A bookmarking application."
-                     false
-                     ;; describe schema here
-                     {:links #{{:url "http://slashdot.org"
-                                :title "Newz"}}
-                      :comments #{}})
 
+(def host "phobos:8080" #_"shelf.polyc0l0r.net")
 
 ;; supply some store
 (def store (<!! #_(new-mem-store)
@@ -40,38 +33,74 @@
                                                                  "localhost") ":5984"))
                                    "bookmarks")))))
 
+(def user-store (<!! (new-mem-store)
+                     #_(new-couch-store
+                      (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
+                                                                 "localhost") ":5984"))
+                                   "users")))))
+
+(def user-peer
+  (server-peer
+   (create-http-kit-handler! (str "ws://" host "/users/ws"))
+   user-store))
+
+#_(pprint (repo/new-repository
+      "users@polyc0l0r.net"
+      {:version 1
+       :type "user"}
+      "user management"
+      false
+      {"eve@polyc0l0r.net"
+       {:username "eve@polyc0l0r.net"
+        :password (creds/hash-bcrypt "lisp")
+        :roles #{::user}}}))
+
+(def user-stage
+    (->
+     {:meta
+      {:causal-order {#uuid "2816337c-0ffa-50f5-be95-c13de874c649" []},
+       :last-update #inst "2014-04-20T19:23:22.355-00:00",
+       :head "master",
+       :public false,
+       :branches
+       {"master" {:heads #{#uuid "2816337c-0ffa-50f5-be95-c13de874c649"}}},
+       :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+       :pull-requests {},
+       :id #uuid "d6483416-7f89-4a5b-a34f-06b101784200",
+       :description "user management"},
+      :author "users@polyc0l0r.net",
+      :schema {:version 1, :type "user"},
+      :transactions [],
+      :type :meta-sub,
+      :new-values
+      {#uuid "2816337c-0ffa-50f5-be95-c13de874c649"
+       {:transactions
+        [[{"eve@polyc0l0r.net"
+           {:username "eve@polyc0l0r.net",
+            :password
+            "$2a$10$u.4Pm11OwmikyuC/XqfYG.8dVybJrPig98eT7LLJQ.jY0SYxDooIO",
+            :roles #{:lambda-shelf.core/user}}}
+          '(fn replace [old params] params)]],
+        :parents [],
+        :ts #inst "2014-04-20T19:23:22.355-00:00",
+        :author "users@polyc0l0r.net",
+        :schema {:version 1, :type "user"}}}}
+     (s/wire-stage user-peer)
+     <!!
+     s/sync!
+     <!!
+     atom))
+
 
 ;; TODO find better way...
-(def host "phobos:8080" #_"shelf.polyc0l0r.net")
 
 ;; start synching
 (def peer (server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
                        store))
 
-(comment
-  (pprint (-> @peer :volatile :log deref))
-
-  (swap! peer (fn [old]
-                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
-                              store)))
-
-  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
-  (keys (-> store :state deref))
-  (async/go
-    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
-                                  (async/timeout 1000)]))))
-;; geschichte is now setup
-
-
-;; friend authentication (example still)
-(def users {"root" {:username "root"
-                    :password (creds/hash-bcrypt "lisp")
-                    :roles #{::admin}}
-            "eve" {:username "eve"
-                    :password (creds/hash-bcrypt "lisp")
-                    :roles #{::user}}})
 
 (derive ::admin ::user)
+
 
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
@@ -118,11 +147,6 @@
 (defroutes handler
   (resources "/")
 
-  (GET "/bookmark/init" []
-       {:status 200
-        :headers {"Content-Type" "application/edn"}
-        :body (str (warehouse/get-all-bookmarks))})
-
   (GET "/bookmark/export.edn" []
        {:status 200
         :headers {"Content-Type" "application/edn"}
@@ -132,7 +156,28 @@
 
   (GET "/geschichte/ws" [] (-> @peer :volatile :handler))
 
+  (GET "/users/ws" [] (-> @user-peer :volatile :handler))
+
   (GET "/login" req (views/login))
+
+  (GET "/registration" req (views/registration))
+
+  (POST "/register" req (let [params (:params req)
+                              new-user {(:email params)
+                                        (-> params
+                                            (dissoc :email-check)
+                                            (assoc :username (:email params))
+                                            (dissoc :email)
+                                            (update-in [:password] creds/hash-bcrypt)
+                                            (assoc :roles #{::user}))}]
+                          (swap! user-stage #(-> %
+                                                 (s/transact
+                                                  new-user
+                                                  'merge)
+                                                 repo/commit
+                                                 s/sync!
+                                                 <!!))
+                          (resp/redirect (str (:context req) "/login"))))
 
   (GET "/logout" req
        (friend/logout* (resp/redirect (str (:context req) "/login"))))
@@ -150,7 +195,7 @@
          :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
                                     resp/response
                                     (resp/status 401))
-         :credential-fn #(creds/bcrypt-credential-fn users %)
+         :credential-fn #(creds/bcrypt-credential-fn (<!! (s/realize-value @user-stage user-store eval)) %)
          :workflows [(workflows/interactive-form)]})
       site))
 
@@ -172,3 +217,5 @@
 #_(def server (start-server 8080))
 
 #_(server)
+
+#_(<!! (s/realize-value @user-stage user-store eval))

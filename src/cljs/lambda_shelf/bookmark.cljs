@@ -15,7 +15,6 @@
 
 (enable-console-print!)
 
-
 (def host "phobos:8080" #_"shelf.polyc0l0r.net")
 
 ;; define live coding vars for geschichte primitives for now
@@ -131,10 +130,9 @@
     (let [new-url (.-value (om/get-node owner "new-url"))
           new-title (.-value (om/get-node owner "new-title"))
           new-comment (.-value (om/get-node owner "new-comment"))
+          current-user (.-innerHTML (. js/document (getElementById "current-user-text")))
           add-btn (om/get-node owner "add-btn")
-          package {:topic :add :data {:url new-url :title new-title :comment new-comment}}
-          ws-in (om/get-state owner :ws-in)
-          ws-out (om/get-state owner :ws-out)]
+          package {:topic :add :data {:url new-url :title new-title :comment new-comment}}]
       (set! (.-innerHTML add-btn) "Adding...")
       (set! (.-disabled add-btn) true)
       (println "NEW STAGE"
@@ -148,12 +146,12 @@
                                                            #{{:title ""
                                                               :text new-comment
                                                               :date (js/Date.)
-                                                              :author "repo1@shelf.polyc0l0r.net"}}
+                                                              :author current-user}}
                                                            #{})
                                                :title new-title
                                                :date (js/Date.)
                                                :votes #{}
-                                               :author "repo1@shelf.polyc0l0r.net"}}}
+                                               :author current-user}}}
                                             '(fn [old new] ;; function to apply the parameters
                                                (update-in old [:links]
                                                           (fn [old new]
@@ -183,9 +181,8 @@
   "Submit new comment and update dom"
   [{:keys [url] :as bookmark} owner]
   (let [comment-field (om/get-node owner (str "new-comment-" (url->hash url) "-group"))
-        new-comment (.-value (om/get-node owner (str "new-comment-" (url->hash url))))
-        ws-in (om/get-state owner :ws-in)
-        ws-out (om/get-state owner :ws-out)]
+        current-user (.-innerHTML (. js/document (getElementById "current-user-text")))
+        new-comment (.-value (om/get-node owner (str "new-comment-" (url->hash url))))]
     (if (= 0 (.-length (.trim new-comment)))
       (.log js/console "_blank")
       (go
@@ -200,7 +197,7 @@
                                                         #{{:title ""
                                                            :text new-comment
                                                            :date (js/Date.)
-                                                           :author "repo1@shelf.polyc0l0r.net"}}
+                                                           :author current-user}}
                                                         #{})
                                             :date (js/Date.)}}}
                                      '(fn [old new]
@@ -270,7 +267,7 @@
 ;; --- views ---
 (defn bookmark-view
   "Bookmark entry in the data table"
-  [{:keys [title url date votes comments] :as bookmark} owner]
+  [{:keys [title url date votes comments author] :as bookmark} owner]
   (let [comment-count (count comments)]
     (reify
       om/IRenderState
@@ -287,7 +284,10 @@
             [:br]
 
             [:ul.list-group
-             (map #(vec [:li.list-group-item %]) (map :text comments))]
+             (map #(vec [:li.list-group-item
+                         [:em#comment-user (str (:author %) " - " (.toLocaleDateString (:date %)) " - " (.toLocaleTimeString (:date %)))]
+                         [:p (:text %)]
+                         ]) comments)]
 
             [:br]
 
@@ -305,6 +305,8 @@
              {:type "button"
               :on-click (fn [_] (add-bookmark-comment @bookmark owner))}
              "add comment"]]]
+
+          [:td.bookmark-author [:em.small author]]
 
           [:td.bookmark-date [:em.small (.toLocaleDateString date)]]
 
@@ -456,14 +458,14 @@
         (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
           (when pm
             (let [new-stage (swap! stage update-in [:meta] update meta)]
-              (println "UPDATING STAGE")
+         ;;     (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
                 (<! (s/sync! (swap! stage repo/merge)))
                 (let [nval (-> new-stage
                                (s/realize-value store update-fns)
                                <!
                                sort-and-join)]
-                  (println "NEW-VALUE:" nval)
+        ;;          (println "NEW-VALUE:" nval)
                   (om/transact!
                    app
                    :bookmarks
@@ -596,7 +598,6 @@
                          {:init-state {:incoming incoming :ws-in ws-in :ws-out ws-out}})]]]
 
         (pagination-view app owner state)]))))
-
 
 
 #_(om/root
