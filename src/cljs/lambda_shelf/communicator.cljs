@@ -54,7 +54,6 @@
           (events/listen event-type/MESSAGE
                          (fn [m]
                               (let [data (read-string (.-message m))]
-                                (.log js/console)
                                 (put! out data))))
           (events/listen event-type/OPENED
                          (fn []
