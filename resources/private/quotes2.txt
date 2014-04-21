@@ -1,0 +1,30 @@
+The best way to predict the future is to invent it. -Alan Kay
+A point of view is worth 80 IQ points. -Alan Kay
+Lisp isn't a language, it's a building material. -Alan Kay
+Simple things should be simple, complex things should be possible. -Alan Kay
+Measuring programming progress by lines of code is like measuring aircraft building progress by weight. -Bill Gates
+Controlling complexity is the essence of computer programming. -Brian Kernighan
+The unavoidable price of reliability is simplicity. -C.A.R. Hoare
+You're bound to be unhappy if you optimize everything. -Donald Knuth
+Simplicity is prerequisite for reliability. -Edsger W. Dijkstra
+Deleted code is debugged code. -Jeff Sickel
+The key to performance is elegance, not battalions of special cases. -Jon Bentley and Doug McIlroy
+First, solve the problem. Then, write the code. -John Johnson
+Simplicity is the ultimate sophistication. -Leonardo da Vinci
+Programming is not about typing... it's about thinking. -Rich Hickey
+Design is about pulling things apart. -Rich Hickey
+Programmers know the benefits of everything and the tradeoffs of nothing. -Rich Hickey
+Code never lies, comments sometimes do. -Ron Jeffries
+The true delight is in the finding out rather than in the knowing.  -Isaac Asimov
+If you give someone Fortran, he has Fortran. If you give someone Lisp, he has any language he pleases.  -Guy Steele
+Any sufficiently complicated C or Fortran program contains an ad hoc informally-specified bug-ridden slow implementation of half of Common Lisp.  -Philip Greenspun
+SQL, Lisp, and Haskell are the only programming languages that I've seen where one spends more time thinking than typing.  -Philip Greenspun
+Part of the inhumanity of the computer is that, once it is competently programmed and working smoothly, it is completely honest.  -Isaac Asimov
+Imagine if every Thursday your shoes exploded if you tied them the usual way. This happens to us all the time with computers, and nobody thinks of complaining.  -Jef Raskin
+The most likely way for the world to be destroyed, most experts agree, is by accident. That's where we come in; we're computer professionals. We cause accidents.  -Nathaniel Borenstein
+Programming today is a race between software engineers striving to build bigger and better idiot-proof programs, and the Universe trying to produce bigger and better idiots. So far, the Universe is winning.  -Rich Cook
+Computers are useless. They can only give you answers.  -Pablo Picasso
+If you want to be a programmer and if you don't know Lisp, you're missing out on something. The sad part is - most people do not even realize this.  -Sriram Krishnan
+In a language with pointers it is unlikely that a new programmer will ever get far enough to encounter any of the truly interesting problems.  -Ian Bicking
+There are only two things wrong with C++: The initial concept and the implementation.  -Bertrand Meyer
+Lisp is a programmable programming language.  -John Foderaro

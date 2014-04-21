@@ -3,6 +3,6 @@
 
 
 (defn random-quote []
-  (-> (slurp "resources/private/quotes.txt")
+  (-> (slurp "resources/private/quotes2.txt")
       (split #"\n")
       (rand-nth)))
