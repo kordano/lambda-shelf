@@ -24,3 +24,13 @@
 #login-panel {
     margin-top: 100px;
 }
+
+#register-panel {
+    margin-top: 100px;
+}
+
+#comment-user{
+    border-bottom-style: solid;
+    border-bottom-width: thin;
+    border-bottom-color: black;
+}
