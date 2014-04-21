@@ -38,10 +38,16 @@
                                                                  "localhost") ":5984"))
                                    "users")))))
 
+;; start synching
 (def user-peer
   (server-peer
-   (create-http-kit-handler! (str "ws://" host "/users/ws"))
+   (create-http-kit-handler! (str "ws://" host "/users/ws") #_(str "wss://" host "/users/ws"))
    user-store))
+
+(def peer
+  (server-peer (create-http-kit-handler! #_(str "wss://" host "/geschichte/ws") (str "ws://" host "/geschichte/ws"))
+                       store))
+
 
 #_(pprint (repo/new-repository
       "users@polyc0l0r.net"
@@ -92,11 +98,6 @@
 
 
 ;; TODO find better way...
-
-;; start synching
-(def peer (server-peer (create-http-kit-handler! (str "wss://" host "/geschichte/ws"))
-                       store))
-
 ;; geschichte is now setup
 
 (derive ::admin ::user)
@@ -171,7 +172,7 @@
 ;; TODO secure geschichte on user-repo basis
 (def secured-app
   (-> handler
-      (friend/requires-scheme-with-proxy :https {:https 443})
+      #_(friend/requires-scheme-with-proxy :https {:https 443})
       (friend/authenticate
         {:allow-anon? true
          :login-uri "/login"
@@ -197,7 +198,7 @@
 
 ;; --- TESTING ---
 
-#_(def server (start-server 8443))
+#_(def server (start-server 8080))
 
 #_(server)
 

@@ -84,7 +84,7 @@
               <!
               s/sync!
               <!
-              (s/connect! (str "wss://" host "/geschichte/ws"))
+              (s/connect! (str "ws://" host "/geschichte/ws") #_(str "wss://" host "/geschichte/ws"))
               <!
               atom))
 
@@ -474,7 +474,7 @@
                    (fn [_] nval))))) ;; don't merge too fast or the network will diverge
             (recur (<! pub-ch) (timeout 300))))
         (go
-          (let [connection (<! (connect! (str "wss://" host "/bookmark/ws")))]
+          (let [connection (<! (connect! (str "ws://" host "/bookmark/ws") #_(str "wss://" host "/bookmark/ws")))] ;; for local testing no secure channel
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))))
         (go
