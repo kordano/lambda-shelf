@@ -18,38 +18,30 @@
             [cemerick.friend.credentials :as creds]
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
-            [clojure.core.async :refer [<!! >!!] :as async]
+            [clojure.core.async :refer [timeout sub chan <!! >!! <! >! go go-loop] :as async]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]))
 
 
 (def host "phobos:8080" #_"shelf.polyc0l0r.net")
 
+
 ;; supply some store
+
 (def store (<!! #_(new-mem-store)
             (new-couch-store
                  (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
                                                                  "localhost") ":5984"))
                                    "bookmarks")))))
 
-(def user-store (<!! (new-mem-store)
-                     #_(new-couch-store
-                      (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
-                                                                 "localhost") ":5984"))
-                                   "users")))))
-
-;; start synching
-(def user-peer
-  (server-peer
-   (create-http-kit-handler! (str "ws://" host "/users/ws") #_(str "wss://" host "/users/ws"))
-   user-store))
 
 (def peer
-  (server-peer (create-http-kit-handler! #_(str "wss://" host "/geschichte/ws") (str "ws://" host "/geschichte/ws"))
-                       store))
+  (server-peer
+   (create-http-kit-handler! #_(str "wss://" host "/geschichte/ws") (str "ws://" host "/geschichte/ws"))
+   store))
 
 
-#_(pprint (repo/new-repository
+#_(print (repo/new-repository
       "users@polyc0l0r.net"
       {:version 1
        :type "user"}
@@ -60,44 +52,55 @@
         :password (creds/hash-bcrypt "lisp")
         :roles #{::user}}}))
 
+
+(def user-store (<!! (new-mem-store)
+                     #_(new-couch-store
+                        (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
+                                                                        "localhost") ":5984"))
+                                          "users")))))
+
+(def user-peer
+  (server-peer
+   (create-http-kit-handler! (str "ws://" host "/users/ws") #_(str "wss://" host "/users/ws"))
+   user-store))
+
 (def user-stage
-    (->
-     {:meta
-      {:causal-order {#uuid "2816337c-0ffa-50f5-be95-c13de874c649" []},
-       :last-update #inst "2014-04-20T19:23:22.355-00:00",
-       :head "master",
-       :public false,
-       :branches
-       {"master" {:heads #{#uuid "2816337c-0ffa-50f5-be95-c13de874c649"}}},
-       :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
-       :pull-requests {},
-       :id #uuid "d6483416-7f89-4a5b-a34f-06b101784200",
-       :description "user management"},
+  (->
+   {:meta
+    {:causal-order {#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957" []},
+     :last-update #inst "2014-04-22T09:52:15.585-00:00",
+     :head "master",
+     :public false,
+     :branches
+     {"master" {:heads #{#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957"}}},
+     :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+     :pull-requests {},
+     :id #uuid "e9f39d56-2863-4e91-bc8d-c9b4192246f1",
+     :description "user management"},
+    :author "users@polyc0l0r.net",
+    :schema {:version 1, :type "user"},
+    :transactions [],
+    :type :meta-sub,
+    :new-values
+    {#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957"
+     {:transactions [[#uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb" #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]],
+      :parents [],
+      :ts #inst "2014-04-22T09:52:15.585-00:00",
       :author "users@polyc0l0r.net",
-      :schema {:version 1, :type "user"},
-      :transactions [],
-      :type :meta-sub,
-      :new-values
-      {#uuid "2816337c-0ffa-50f5-be95-c13de874c649"
-       {:transactions
-        [[{"eve@polyc0l0r.net"
-           {:username "eve@polyc0l0r.net",
-            :password
-            "$2a$10$u.4Pm11OwmikyuC/XqfYG.8dVybJrPig98eT7LLJQ.jY0SYxDooIO",
-            :roles #{:lambda-shelf.core/user}}}
-          '(fn replace [old params] params)]],
-        :parents [],
-        :ts #inst "2014-04-20T19:23:22.355-00:00",
-        :author "users@polyc0l0r.net",
-        :schema {:version 1, :type "user"}}}}
-     (s/wire-stage user-peer)
-     <!!
-     s/sync!
-     <!!
-     atom))
+      :schema {:version 1, :type "user"}},
+     #uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb"
+     {"eve@polyc0l0r.net" {:username "eve@polyc0l0r.net",
+                           :password "$2a$10$uQ9Rw0SrEs6qhbtCr3MklenKQBPuvTab4w6bJvIsUZHNkbNbQ2TWm",
+                           :roles #{:lambda-shelf.core/user}}},
+     #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d" '(fn replace [old params] params)}}
+   (s/wire-stage user-peer)
+   <!!
+   s/sync!
+   <!!
+   atom))
 
 
-;; TODO find better way...
+
 ;; geschichte is now setup
 
 (derive ::admin ::user)
@@ -218,5 +221,4 @@
   (async/go
     (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
                                   (async/timeout 1000)])))
-
   )

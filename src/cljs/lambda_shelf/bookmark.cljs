@@ -20,20 +20,20 @@
 ;; define live coding vars for geschichte primitives for now
 
 ;; the following repository was created with:
-#_(repo/new-repository "repo1@shelf.polyc0l0r.net",
-                      {:version 1, :type "http://shelf.polyc0l0r.net"}
-                      "A bookmark app."
-                      true
-                      {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-                               {:comments #{{:title "first!!!!"
-                                             :text "great news."
-                                             :date #inst "2014-04-07T13:30:14.686-00:00"
-                                             :author "eve"}},
-                                :date #inst "2014-04-07T13:27:23.438-00:00",
-                                :author "eve"
-                                :votes #{"eve"},
-                                :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-                                :title "An introduction to Magit, an Emacs mode for Git."}}})
+#_(.log js/console (str "NEW-INIT-REPO" (repo/new-repository "repo1@shelf.polyc0l0r.net",
+                                           {:version 1, :type "http://shelf.polyc0l0r.net"}
+                                           "A bookmark app."
+                                           true
+                                           {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
+                                                    {:comments #{{:title "first!!!!"
+                                                                  :text "great news."
+                                                                  :date #inst "2014-04-07T13:30:14.686-00:00"
+                                                                  :author "eve"}},
+                                                     :date #inst "2014-04-07T13:27:23.438-00:00",
+                                                     :author "eve"
+                                                     :votes #{"eve"},
+                                                     :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
+                                                     :title "An introduction to Magit, an Emacs mode for Git."}}})))
 
 
 
@@ -50,36 +50,8 @@
 
   ;; connect a stage to it and instruct the peer to connect to a remote peer
   (def stage (-> ;; will be loaded from kv-store
-              {:meta {:causal-order {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749" []},
-                      :last-update #inst "2014-04-07T15:57:48.581-00:00",
-                      :head "master",
-                      :public true,
-                      :branches {"master" {:heads #{#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"}}},
-                      :schema {:type "http://github.com/ghubber/geschichte", :version 1},
-                      :pull-requests {},
-                      :id #uuid "84473475-2c87-470e-8774-9de66e665812",
-                      :description "A bookmark app."},
-               :author "repo1@shelf.polyc0l0r.net",
-               :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
-               :transactions [],
-               :type :meta-sub,
-               :new-values {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"
-                            {:transactions
-                             [[{:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-                                        {:comments #{{:title "first!!!!",
-                                                      :text "great news.",
-                                                      :date #inst "2014-04-07T13:30:14.686-00:00",
-                                                      :author "eve"}},
-                                         :date #inst "2014-04-07T13:27:23.438-00:00",
-                                         :author "eve",
-                                         :votes #{"eve"},
-                                         :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-                                         :title "An introduction to Magit, an Emacs mode for Git."}}}
-                               '(fn replace [old params] params)]],
-                             :parents [],
-                             :ts #inst "2014-04-07T15:57:48.581-00:00",
-                             :author "repo1@shelf.polyc0l0r.net",
-                             :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
+              {:meta {:branches {"master" {:heads #{#uuid "05bb531f-02f1-5521-88ef-7f381875ead3"}}}, :id #uuid "1292990f-fb8e-4198-a736-1442277ad7f6", :description "A bookmark app.", :head "master", :last-update #inst "2014-04-22T09:58:41.856-00:00", :schema {:type "http://github.com/ghubber/geschichte", :version 1}, :causal-order {#uuid "05bb531f-02f1-5521-88ef-7f381875ead3" []}, :public true, :pull-requests {}}, :author "repo1@shelf.polyc0l0r.net", :schema {:version 1, :type "http://shelf.polyc0l0r.net"}, :transactions [], :type :meta-sub, :new-values {#uuid "05bb531f-02f1-5521-88ef-7f381875ead3" {:transactions [[#uuid "23fbe3e4-aa6c-5267-b7f8-47f8e6fc140d" #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]], :parents [], :ts #inst "2014-04-22T09:58:41.856-00:00", :author "repo1@shelf.polyc0l0r.net", :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}, #uuid "23fbe3e4-aa6c-5267-b7f8-47f8e6fc140d" {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/" {:comments #{{:title "first!!!!", :text "great news.", :date #inst "2014-04-07T13:30:14.686-00:00", :author "eve"}}, :date #inst "2014-04-07T13:27:23.438-00:00", :author "eve", :votes #{"eve"}, :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/", :title "An introduction to Magit, an Emacs mode for Git."}}}, #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d" '(fn replace [old params] params)}}
+
               (s/wire-stage peer)
               <!
               s/sync!
@@ -285,7 +257,7 @@
 
             [:ul.list-group
              (map #(vec [:li.list-group-item
-                         [:em#comment-user (str (:author %) " - " (.toLocaleDateString (:date %)) " - " (.toLocaleTimeString (:date %)))]
+                         [:em.small#comment-user (str (:author %) " - " (.toLocaleDateString (:date %)) " - " (.toLocaleTimeString (:date %)))]
                          [:p (:text %)]
                          ]) comments)]
 
