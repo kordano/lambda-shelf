@@ -5,6 +5,21 @@
             [lambda-shelf.quotes :as quotes]
             [clojure.java.io :as io]))
 
+(deftemplate impressum
+  (io/resource "public/index.html")
+  []
+  [:body]
+  (append
+   (html
+    [:div.container
+     [:div.jumbotron
+      [:h2 "Impressum"]
+      [:address
+       [:strong "The Lambda Collective"] [:br]
+       "Konrad Kühne, Christian Weilbach" [:br]
+       "Musterstrasse 123" [:br]
+       "98765 Musterstadt" [:br]
+       [:a {:href "mailto:info@lambda-collective.net"} "mail dump"]]]])))
 
 (deftemplate page
   (io/resource "public/index.html")
@@ -52,6 +67,8 @@
      [:div.well.well-sm
       (quotes/random-quote)]]
     [:div#main.container]
+    [:div#site-footer.container
+     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
     [:script {:src "static/jquery/jquery-1.11.0.min.js"}]
     [:script {:src "static/react/react-0.9.0.min.js"}]
     [:script {:src "static/bootstrap/bootstrap-3.1.1-dist/js/bootstrap.min.js"}]
@@ -65,40 +82,51 @@
   [:body]
   (append
    (html
-    [:div.col-md-6.col-md-offset-3.col-sm-8.col-sm-offset-2
-     [:div#register-panel.panel.panel-primary
-      [:div.panel-heading
-       [:h3.panel-title "Registration"]]
-      [:div.panel-body
-       [:div#input-form {:role "form"}
-        [:form {:method "POST" :action "register"}
+    [:div.container
+     [:div.col-md-6.col-md-offset-3.col-sm-8.col-sm-offset-2
+      [:div#register-panel.panel.panel-primary
+       [:div.panel-heading
+        [:h3.panel-title "Registration"]]
+       [:div.panel-body
+        [:div#input-form {:role "form"}
+         [:form {:method "POST" :action "register"}
 
-         [:div.form-group
-          [:input.form-control
-           {:type "text"
-            :name "email"
-            :autocomplete "off"
-            :placeholder "e-mail"}]]
+          [:div.form-group
+           [:input.form-control
+            {:type "text"
+             :name "firstname"
+             :autocomplete "off"
+             :placeholder "First Name"}]]
 
-         [:div.form-group
-          [:input.form-control
-           {:type "text"
-            :name "email-check"
-            :autocomplete "off"
-            :placeholder "Repeat e-mail"}]]
+          [:div.form-group
+           [:input.form-control
+            {:type "text"
+             :name "lastname"
+             :autocomplete "off"
+             :placeholder "Last Name"}]]
 
-         [:div.form-group
-          [:input.form-control
-           {:type "password"
-            :name "password"
-            :autocomplete "off"
-            :placeholder "Password"}]]
+          [:div.form-group
+           [:input.form-control
+            {:type "email"
+             :name "email"
+             :autocomplete "off"
+             :placeholder "e-mail"}]]
 
-         [:br]
+          [:div.form-group
+           [:input.form-control
+            {:type "password"
+             :name "password"
+             :autocomplete "off"
+             :placeholder "Password"}]]
 
-         [:input.btn.btn-primary.btn
-          {:type "submit"
-           :value "Register"}]]]]]])))
+          [:br]
+
+          [:input.btn.btn-primary.btn
+           {:type "submit"
+            :value "Register"}]]]]]]]
+    [:div#site-footer.container
+     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
+    )))
 
 
 (deftemplate login
@@ -107,31 +135,35 @@
   [:body]
   (append
    (html
-    [:div.col-md-4.col-md-offset-4.col-sm-6.col-sm-offset-3
-     [:div#login-panel.panel.panel-primary
-      [:div.panel-heading
-       [:h3.panel-title "Welcome to the Shelf"]]
-      [:div.panel-body
-       [:div#input-form {:role "form"}
-        [:form {:method "POST" :action "login"}
-         [:div.form-group
-          [:input.form-control
-           {:type "text"
-            :name "username"
-            :placeholder "User"}]]
+    [:div.container
+     [:div.col-md-6.col-md-offset-3.col-sm-8.col-sm-offset-2
+      [:div#login-panel.panel.panel-primary
+       [:div.panel-heading
+        [:h3.panel-title "Welcome to the Shelf"]]
+       [:div.panel-body
+        [:div#input-form {:role "form"}
+         [:form {:method "POST" :action "login"}
+          [:div.form-group
+           [:input.form-control
+            {:type "text"
+             :name "username"
+             :placeholder "User"}]]
 
-         [:div.form-group
-          [:input.form-control
-           {:type "password"
-            :name "password"
-            :placeholder "Password"}]]
+          [:div.form-group
+           [:input.form-control
+            {:type "password"
+             :name "password"
+             :placeholder "Password"}]]
 
-         [:br]
+          [:br]
 
-         [:input.btn.btn-primary.btn-block
-          {:type "submit"
-           :value "Login"}]
+          [:input.btn.btn-primary.btn-block
+           {:type "submit"
+            :value "Login"}]
 
-         [:br]
+          [:br]
 
-         [:small "Not a member yet? Sign up " [:a {:href "registration"} "here"] "!"]]]]]])))
+          [:small "Not a member yet? Sign up " [:a {:href "registration"} "here"] "!"]]]]]]]
+    [:div#site-footer.container
+     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
+    )))

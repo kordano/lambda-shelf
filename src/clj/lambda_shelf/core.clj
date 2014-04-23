@@ -6,6 +6,7 @@
             [compojure.core :refer [GET POST defroutes]]
             [geschichte.repo :as repo]
             [geschichte.stage :as s]
+            [geschichte.meta :refer [update]]
             [geschichte.sync :refer [server-peer client-peer]]
             [geschichte.platform :refer [create-http-kit-handler!]]
             [konserve.store :refer [new-mem-store]]
@@ -25,14 +26,17 @@
 
 (def host "phobos:8080" #_"shelf.polyc0l0r.net")
 
-
 ;; supply some store
 
 (def store (<!! #_(new-mem-store)
             (new-couch-store
-                 (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
-                                                                 "localhost") ":5984"))
-                                   "bookmarks")))))
+             (couch (utils/url
+                     (utils/url
+                      (str "http://"
+                           (or (System/getenv "DB_PORT_5984_TCP_ADDR")
+                               "localhost")
+                           ":5984"))
+                     "bookmarks")))))
 
 
 (def peer
@@ -139,6 +143,8 @@
 (defroutes handler
   (resources "/")
 
+  (GET "/impressum" [] (views/impressum))
+
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
 
   (GET "/geschichte/ws" [] (-> @peer :volatile :handler))
@@ -157,13 +163,14 @@
                                             (dissoc :email)
                                             (update-in [:password] creds/hash-bcrypt)
                                             (assoc :roles #{::user}))}]
-                          (swap! user-stage #(-> %
-                                                 (s/transact
-                                                  new-user
-                                                  'merge)
-                                                 repo/commit
-                                                 s/sync!
-                                                 <!!))
+                          (if (= (:email-check params) (:email params))
+                              (swap! user-stage #(-> %
+                                                     (s/transact
+                                                      new-user
+                                                      'merge)
+                                                     repo/commit
+                                                     s/sync!
+                                                     <!!)))
                           (resp/redirect (str (:context req) "/login"))))
 
   (GET "/logout" req
@@ -199,13 +206,39 @@
   (let [port (Integer. (or (System/getenv "PORT") (first args)))]
     (start-server port)))
 
+
 ;; --- TESTING ---
+
+(def user-pub-ch (chan))
 
 #_(def server (start-server 8080))
 
 #_(server)
 
+
+
+;; --- testing around ---
+#_(def user (atom nil))
+
+#_(go
+    (let [[p out] (:chans @user-stage)]
+      (>! user-pub-ch @user-stage)
+      (sub p :meta-pub user-pub-ch)))
+
+#_(go-loop [{:keys [meta] :as pm} (<! user-pub-ch)
+            slowdown-ch (timeout 0)]
+    (when pm
+      (<! slowdown-ch)
+      (let [new-stage (swap! user-stage update-in [:meta] update meta)]
+        (if (repo/merge-necessary? (:meta new-stage))
+          (<! (s/sync! (swap! user-stage repo/merge)))
+          (let [new-val (s/realize-value @user-stage user-store eval)]
+            (swap! users (fn [_] new-val)))))
+      (recur (<! user-pub-ch) (timeout 300))))
+
+
 (comment
+
   (<!! (s/realize-value @user-stage user-store eval))
 
   (pprint (-> @peer :volatile :log deref))
@@ -221,4 +254,5 @@
   (async/go
     (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
                                   (async/timeout 1000)])))
+
   )
