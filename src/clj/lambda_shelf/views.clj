@@ -68,7 +68,7 @@
       (quotes/random-quote)]]
     [:div#main.container]
     [:div#site-footer.container
-     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
+     [:p.text-center [:a {:href "impressum" :target "_blank"} "Impressum"]]]
     [:script {:src "static/jquery/jquery-1.11.0.min.js"}]
     [:script {:src "static/react/react-0.9.0.min.js"}]
     [:script {:src "static/bootstrap/bootstrap-3.1.1-dist/js/bootstrap.min.js"}]
@@ -125,7 +125,7 @@
            {:type "submit"
             :value "Register"}]]]]]]]
     [:div#site-footer.container
-     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
+     [:p.text-center [:a {:href "impressum" :target "_blank"} "Impressum"]]]
     )))
 
 
@@ -165,5 +165,5 @@
 
           [:small "Not a member yet? Sign up " [:a {:href "registration"} "here"] "!"]]]]]]]
     [:div#site-footer.container
-     [:p.text-center [:a {:href "impressum"} "Impressum"]]]
+     [:p.text-center [:a {:href "impressum" :target "_blank"} "Impressum"]]]
     )))
