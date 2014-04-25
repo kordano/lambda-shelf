@@ -4,6 +4,7 @@ A basic reddit-like link collector using David Nolen's React interface [om](http
 
 Enjoy live application [here](https://shelf.polyc0l0r.net "Lambda Shelf").
 
+
 ## Usage
 
 A [couchdb](http://couchdb.apache.org "couchdb site") instance for [konserve](https://github.com/ghubber/konserve) is required.
@@ -25,6 +26,14 @@ Visit [localhost:8080](http://localhost:8080 "Lambda Shelf").
 ## Deployment with Docker
 
 A configured Dockerfile can be found [here](https://github.com/kordano/docker-shelf "docker-shelf").
+
+## TODO
+
+- Follow different p2p users, pull data selectively.
+- Embed (external) pictures/videos/...
+- Markdown format in comments.
+- Investigate `Diaspora` peer protocol (maybe it can be plugged in).
+
 
 ## License
 

@@ -35,7 +35,7 @@
             [com.cemerick/austin "0.1.4"]
             [lein-ancient "0.5.4"]]
 
-  :repl-options {:init-ns lambda-shelf.core}
+;  :repl-options {:init-ns lambda-shelf.core}
 
 
   :main ^:skip-aot lambda-shelf.core

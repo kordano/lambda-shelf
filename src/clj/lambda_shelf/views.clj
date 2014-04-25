@@ -6,6 +6,8 @@
             [clojure.java.io :as io]))
 
 
+(def static-path (some-> (System/getenv "SHELF_STATIC_PATH") read-string))
+
 (deftemplate page
   (io/resource "public/index.html")
   [req]
@@ -52,9 +54,16 @@
      [:div.well.well-sm
       (quotes/random-quote)]]
     [:div#main.container]
-    [:script {:src "static/jquery/jquery-1.11.0.min.js"}]
-    [:script {:src "static/react/react-0.9.0.min.js"}]
-    [:script {:src "static/bootstrap/bootstrap-3.1.1-dist/js/bootstrap.min.js"}]
+    [:script {:src (if static-path
+                     (str static-path "/jquery/jquery-1.11.0.min.js")
+                     "//ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js")}]
+    [:script {:src (if static-path
+                     (str static-path "/react/react-0.9.0.min.js")
+                     "//fb.me/react-0.9.0.min.js" ;; facebook breaks https on redirect!!
+                     )}]
+    [:script {:src (if static-path
+                     (str static-path "/bootstrap/bootstrap-3.1.1-dist/js/bootstrap.min.js")
+                     "//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js")}]
     [:script {:src "js/main.js"}]
     [:script (browser-connected-repl-js)])))
 

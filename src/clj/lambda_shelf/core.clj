@@ -20,10 +20,24 @@
             [lambda-shelf.quotes :as quotes]
             [clojure.core.async :refer [<!! >!!] :as async]
             [com.ashafa.clutch.utils :as utils]
-            [com.ashafa.clutch :refer [couch]]))
+            [com.ashafa.clutch :refer [couch]]
+            [clojure.tools.logging :refer [info warn error]]))
+
+(def behind-proxy? (or (System/getenv "SHELF_IS_BEHIND_PROXY")
+                       false))
 
 
-(def host "phobos:8080" #_"shelf.polyc0l0r.net")
+(def proto (or (System/getenv "SHELF_PROTO")
+               "http"))
+
+(def host (or (System/getenv "SHELF_HOST")
+              "localhost"))
+
+(def port (Integer.
+           (or (System/getenv "SHELF_PORT")
+               "8088")))
+
+
 
 ;; supply some store
 (def store (<!! #_(new-mem-store)
@@ -32,8 +46,8 @@
                                                                  "localhost") ":5984"))
                                    "bookmarks")))))
 
-(def user-store (<!! (new-mem-store)
-                     #_(new-couch-store
+(def user-store (<!! #_(new-mem-store)
+                     (new-couch-store
                       (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
                                                                  "localhost") ":5984"))
                                    "users")))))
@@ -41,15 +55,18 @@
 ;; start synching
 (def user-peer
   (server-peer
-   (create-http-kit-handler! (str "ws://" host "/users/ws") #_(str "wss://" host "/users/ws"))
+   (create-http-kit-handler! (str (if (= proto "https")
+                                    "wss" "ws") "://" host ":" port "/users/ws"))
    user-store))
 
 (def peer
-  (server-peer (create-http-kit-handler! #_(str "wss://" host "/geschichte/ws") (str "ws://" host "/geschichte/ws"))
-                       store))
+  (server-peer (create-http-kit-handler! (str (if (= proto "https")
+                                                "wss" "ws") "://" host ":" port "/geschichte/ws"))
+               store))
 
 
-#_(pprint (repo/new-repository
+
+#_(clojure.pprint/pprint (repo/new-repository
       "users@polyc0l0r.net"
       {:version 1
        :type "user"}
@@ -57,44 +74,48 @@
       false
       {"eve@polyc0l0r.net"
        {:username "eve@polyc0l0r.net"
-        :password (creds/hash-bcrypt "lisp")
+        :password "$2a$10$FHlpFYfbz5hj8/4mC5mMQOge5Nu3oAOZ3mhfUn/PTlLfj2inwlKwa"
+
         :roles #{::user}}}))
 
 (def user-stage
-    (->
-     {:meta
-      {:causal-order {#uuid "2816337c-0ffa-50f5-be95-c13de874c649" []},
-       :last-update #inst "2014-04-20T19:23:22.355-00:00",
-       :head "master",
-       :public false,
-       :branches
-       {"master" {:heads #{#uuid "2816337c-0ffa-50f5-be95-c13de874c649"}}},
-       :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
-       :pull-requests {},
-       :id #uuid "d6483416-7f89-4a5b-a34f-06b101784200",
-       :description "user management"},
-      :author "users@polyc0l0r.net",
-      :schema {:version 1, :type "user"},
-      :transactions [],
-      :type :meta-sub,
-      :new-values
-      {#uuid "2816337c-0ffa-50f5-be95-c13de874c649"
-       {:transactions
-        [[{"eve@polyc0l0r.net"
-           {:username "eve@polyc0l0r.net",
-            :password
-            "$2a$10$u.4Pm11OwmikyuC/XqfYG.8dVybJrPig98eT7LLJQ.jY0SYxDooIO",
-            :roles #{:lambda-shelf.core/user}}}
-          '(fn replace [old params] params)]],
-        :parents [],
-        :ts #inst "2014-04-20T19:23:22.355-00:00",
-        :author "users@polyc0l0r.net",
-        :schema {:version 1, :type "user"}}}}
-     (s/wire-stage user-peer)
-     <!!
-     s/sync!
-     <!!
-     atom))
+  (-> {:meta
+       {:causal-order {#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44" []},
+        :last-update #inst "2014-04-21T19:09:00.319-00:00",
+        :head "master",
+        :public false,
+        :branches
+        {"master" {:heads #{#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44"}}},
+        :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+        :pull-requests {},
+        :id #uuid "2c58ac7d-f231-4601-b527-8eabd9fc336d",
+        :description "user management"},
+       :author "users@polyc0l0r.net",
+       :schema {:version 1, :type "user"},
+       :transactions [],
+       :type :meta-sub,
+       :new-values
+       {#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44"
+        {:transactions
+         [[#uuid "14fee57a-ef69-5b26-b1a3-ddce1c3861bc"
+           #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]],
+         :parents [],
+         :ts #inst "2014-04-21T19:09:00.319-00:00",
+         :author "users@polyc0l0r.net",
+         :schema {:version 1, :type "user"}},
+        #uuid "14fee57a-ef69-5b26-b1a3-ddce1c3861bc"
+        {"eve@polyc0l0r.net"
+         {:username "eve@polyc0l0r.net",
+          :password
+          "$2a$10$XfI6c004FVfthOCSbahQRuC0L3665C7Ry27rhjB8oVIehdqBMnAr2",
+          :roles #{:lambda-shelf.core/user}}},
+        #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"
+        '(fn replace [old params] params)}}
+      (s/wire-stage user-peer)
+      <!!
+      s/sync!
+      <!!
+      atom))
 
 
 ;; TODO find better way...
@@ -126,10 +147,10 @@
   (with-channel request channel
     (on-close channel
               (fn [status]
-                (println "bookmark channel closed: " status)))
+                (info "bookmark channel closed: " status)))
     (on-receive channel
                 (fn [data]
-                  (println (str "Incoming package: " (java.util.Date.)))
+                  (info (str "Incoming package: " (java.util.Date.)))
                   (send! channel (str (dispatch-bookmark (read-string data))))))))
 
 
@@ -171,34 +192,36 @@
 
 ;; TODO secure geschichte on user-repo basis
 (def secured-app
-  (-> handler
-      #_(friend/requires-scheme-with-proxy :https {:https 443})
+  (-> (if behind-proxy?
+        (friend/requires-scheme-with-proxy handler
+                                           (keyword proto)
+                                           {(keyword proto) port})
+        handler)
       (friend/authenticate
-        {:allow-anon? true
-         :login-uri "/login"
-         :default-landing-uri "/"
-         :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
-                                    resp/response
-                                    (resp/status 401))
-         :credential-fn #(creds/bcrypt-credential-fn (<!! (s/realize-value @user-stage user-store eval)) %)
-         :workflows [(workflows/interactive-form)]})
+       {:allow-anon? true
+        :login-uri "/login"
+        :default-landing-uri "/"
+        :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
+                                   resp/response
+                                   (resp/status 401))
+        :credential-fn #(creds/bcrypt-credential-fn (<!! (s/realize-value @user-stage user-store eval)) %)
+        :workflows [(workflows/interactive-form)]})
       site))
 
 
 (defn start-server [port]
   (do
-    (println (str "Starting server @ port " port))
+    (info (str "Starting server @ port " port))
     (run-server secured-app {:port port :join? false})))
 
 
 (defn -main [& args]
-  (println (first args))
-  (let [port (Integer. (or (System/getenv "PORT") (first args)))]
-    (start-server port)))
+  (info (first args))
+  (start-server port))
 
 ;; --- TESTING ---
 
-#_(def server (start-server 8080))
+#_(def server (start-server 8088))
 
 #_(server)
 

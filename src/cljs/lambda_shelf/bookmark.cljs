@@ -15,8 +15,6 @@
 
 (enable-console-print!)
 
-(def host "phobos:8080" #_"shelf.polyc0l0r.net")
-
 ;; define live coding vars for geschichte primitives for now
 
 ;; the following repository was created with:
@@ -35,7 +33,9 @@
                                 :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
                                 :title "An introduction to Magit, an Emacs mode for Git."}}})
 
+(def uri (goog.Uri. js/document.URL))
 
+(def ssl? (= (.getScheme uri) "https"))
 
 ;; a channel where all (metadata)-updates will come in through
 ;; and which we will realize in a ui through om
@@ -50,41 +50,55 @@
 
   ;; connect a stage to it and instruct the peer to connect to a remote peer
   (def stage (-> ;; will be loaded from kv-store
-              {:meta {:causal-order {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749" []},
-                      :last-update #inst "2014-04-07T15:57:48.581-00:00",
-                      :head "master",
-                      :public true,
-                      :branches {"master" {:heads #{#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"}}},
-                      :schema {:type "http://github.com/ghubber/geschichte", :version 1},
-                      :pull-requests {},
-                      :id #uuid "84473475-2c87-470e-8774-9de66e665812",
-                      :description "A bookmark app."},
+              {:meta
+               {:causal-order {#uuid "1b6121a0-50a3-52d3-b597-6328baa4217a" []},
+                :last-update #inst "2014-04-25T18:02:55.403-00:00",
+                :head "master",
+                :public true,
+                :branches
+                {"master" {:heads #{#uuid "1b6121a0-50a3-52d3-b597-6328baa4217a"}}},
+                :schema {:type "http://github.com/ghubber/geschichte", :version 1},
+                :pull-requests {},
+                :id #uuid "a0c26369-4cad-48ee-8e12-d280b6a26628",
+                :description "A bookmark app."},
                :author "repo1@shelf.polyc0l0r.net",
                :schema {:version 1, :type "http://shelf.polyc0l0r.net"},
                :transactions [],
                :type :meta-sub,
-               :new-values {#uuid "169ecefc-a5db-5058-a5f4-bc34c719c749"
-                            {:transactions
-                             [[{:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-                                        {:comments #{{:title "first!!!!",
-                                                      :text "great news.",
-                                                      :date #inst "2014-04-07T13:30:14.686-00:00",
-                                                      :author "eve"}},
-                                         :date #inst "2014-04-07T13:27:23.438-00:00",
-                                         :author "eve",
-                                         :votes #{"eve"},
-                                         :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-                                         :title "An introduction to Magit, an Emacs mode for Git."}}}
-                               '(fn replace [old params] params)]],
-                             :parents [],
-                             :ts #inst "2014-04-07T15:57:48.581-00:00",
-                             :author "repo1@shelf.polyc0l0r.net",
-                             :schema {:version 1, :type "http://shelf.polyc0l0r.net"}}}}
+               :new-values
+               {#uuid "1b6121a0-50a3-52d3-b597-6328baa4217a"
+                {:transactions
+                 [[#uuid "23fbe3e4-aa6c-5267-b7f8-47f8e6fc140d"
+                   #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]],
+                 :parents [],
+                 :ts #inst "2014-04-25T18:02:55.403-00:00",
+                 :author "repo1@shelf.polyc0l0r.net",
+                 :schema {:version 1, :type "http://shelf.polyc0l0r.net"}},
+                #uuid "23fbe3e4-aa6c-5267-b7f8-47f8e6fc140d"
+                {:links
+                 {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
+                  {:comments
+                   #{{:title "first!!!!",
+                      :text "great news.",
+                      :date #inst "2014-04-07T13:30:14.686-00:00",
+                      :author "eve"}},
+                   :date #inst "2014-04-07T13:27:23.438-00:00",
+                   :author "eve",
+                   :votes #{"eve"},
+                   :url
+                   "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
+                   :title "An introduction to Magit, an Emacs mode for Git."}}},
+                #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"
+                '(fn replace [old params] params)}}
               (s/wire-stage peer)
               <!
               s/sync!
               <!
-              (s/connect! (str "ws://" host "/geschichte/ws") #_(str "wss://" host "/geschichte/ws"))
+              (s/connect! (str (if ssl? "wss://" "ws://")
+                               (.getDomain uri)
+                               ":"
+                               (.getPort uri)
+                               "/geschichte/ws"))
               <!
               atom))
 
@@ -460,21 +474,25 @@
           (when pm
             (<! slowdown-ch)
             (let [new-stage (swap! stage update-in [:meta] update meta)]
-         ;;     (println "UPDATING STAGE")
+              ;;     (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
                 (<! (s/sync! (swap! stage repo/merge)))
                 (let [nval (-> new-stage
                                (s/realize-value store update-fns)
                                <!
                                sort-and-join)]
-        ;;          (println "NEW-VALUE:" nval)
+                  ;;          (println "NEW-VALUE:" nval)
                   (om/transact!
                    app
                    :bookmarks
-                   (fn [_] nval))))) ;; don't merge too fast or the network will diverge
+                   (fn [_] nval)))))
             (recur (<! pub-ch) (timeout 300))))
         (go
-          (let [connection (<! (connect! (str "ws://" host "/bookmark/ws") #_(str "wss://" host "/bookmark/ws")))] ;; for local testing no secure channel
+          (let [connection (<! (connect! (str (if ssl? "wss://" "ws://")
+                                              (.getDomain uri)
+                                              ":"
+                                              (.getPort uri)
+                                              "/bookmark/ws")))] ;; for local testing no secure channel
             (om/set-state! owner :ws-in (:in connection))
             (om/set-state! owner :ws-out (:out connection))))
         (go
