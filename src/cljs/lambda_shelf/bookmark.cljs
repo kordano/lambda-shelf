@@ -18,20 +18,20 @@
 ;; define live coding vars for geschichte primitives for now
 
 ;; the following repository was created with:
-#_(repo/new-repository "repo1@shelf.polyc0l0r.net",
-                      {:version 1, :type "http://shelf.polyc0l0r.net"}
-                      "A bookmark app."
-                      true
-                      {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
-                               {:comments #{{:title "first!!!!"
-                                             :text "great news."
-                                             :date #inst "2014-04-07T13:30:14.686-00:00"
-                                             :author "eve"}},
-                                :date #inst "2014-04-07T13:27:23.438-00:00",
-                                :author "eve"
-                                :votes #{"eve"},
-                                :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
-                                :title "An introduction to Magit, an Emacs mode for Git."}}})
+#_(.log js/console (str "NEW-INIT-REPO" (repo/new-repository "repo1@shelf.polyc0l0r.net",
+                                           {:version 1, :type "http://shelf.polyc0l0r.net"}
+                                           "A bookmark app."
+                                           true
+                                           {:links {"http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/"
+                                                    {:comments #{{:title "first!!!!"
+                                                                  :text "great news."
+                                                                  :date #inst "2014-04-07T13:30:14.686-00:00"
+                                                                  :author "eve"}},
+                                                     :date #inst "2014-04-07T13:27:23.438-00:00",
+                                                     :author "eve"
+                                                     :votes #{"eve"},
+                                                     :url "http://www.masteringemacs.org/articles/2013/12/06/introduction-magit-emacs-mode-git/",
+                                                     :title "An introduction to Magit, an Emacs mode for Git."}}})))
 
 (def uri (goog.Uri. js/document.URL))
 
@@ -299,7 +299,7 @@
 
             [:ul.list-group
              (map #(vec [:li.list-group-item
-                         [:em#comment-user (str (:author %) " - " (.toLocaleDateString (:date %)) " - " (.toLocaleTimeString (:date %)))]
+                         [:em.small#comment-user (str (:author %) " - " (.toLocaleTimeString (:date %)))]
                          [:p (:text %)]
                          ]) comments)]
 

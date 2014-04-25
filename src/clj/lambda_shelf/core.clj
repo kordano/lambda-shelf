@@ -6,6 +6,7 @@
             [compojure.core :refer [GET POST defroutes]]
             [geschichte.repo :as repo]
             [geschichte.stage :as s]
+            [geschichte.meta :refer [update]]
             [geschichte.sync :refer [server-peer client-peer]]
             [geschichte.platform :refer [create-http-kit-handler!]]
             [konserve.store :refer [new-mem-store]]
@@ -18,7 +19,7 @@
             [cemerick.friend.credentials :as creds]
             [lambda-shelf.views :as views]
             [lambda-shelf.quotes :as quotes]
-            [clojure.core.async :refer [<!! >!!] :as async]
+            [clojure.core.async :refer [timeout sub chan <!! >!! <! >! go go-loop] :as async]
             [com.ashafa.clutch.utils :as utils]
             [com.ashafa.clutch :refer [couch]]
             [clojure.tools.logging :refer [info warn error]]))
@@ -35,11 +36,12 @@
 
 (def port (Integer.
            (or (System/getenv "SHELF_PORT")
-               "8088")))
+               "8080")))
 
 
 
 ;; supply some store
+
 (def store (<!! #_(new-mem-store)
             (new-couch-store
                  (couch (utils/url (utils/url (str "http://" (or (System/getenv "DB_PORT_5984_TCP_ADDR")
@@ -78,48 +80,64 @@
 
         :roles #{::user}}}))
 
+
 (def user-stage
-  (-> {:meta
-       {:causal-order {#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44" []},
-        :last-update #inst "2014-04-21T19:09:00.319-00:00",
-        :head "master",
-        :public false,
-        :branches
-        {"master" {:heads #{#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44"}}},
-        :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
-        :pull-requests {},
-        :id #uuid "2c58ac7d-f231-4601-b527-8eabd9fc336d",
-        :description "user management"},
-       :author "users@polyc0l0r.net",
-       :schema {:version 1, :type "user"},
-       :transactions [],
-       :type :meta-sub,
-       :new-values
-       {#uuid "05f827a8-c061-5b5c-9ff9-806cd05cad44"
-        {:transactions
-         [[#uuid "14fee57a-ef69-5b26-b1a3-ddce1c3861bc"
-           #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]],
-         :parents [],
-         :ts #inst "2014-04-21T19:09:00.319-00:00",
-         :author "users@polyc0l0r.net",
-         :schema {:version 1, :type "user"}},
-        #uuid "14fee57a-ef69-5b26-b1a3-ddce1c3861bc"
-        {"eve@polyc0l0r.net"
-         {:username "eve@polyc0l0r.net",
-          :password
-          "$2a$10$XfI6c004FVfthOCSbahQRuC0L3665C7Ry27rhjB8oVIehdqBMnAr2",
-          :roles #{:lambda-shelf.core/user}}},
-        #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"
-        '(fn replace [old params] params)}}
-      (s/wire-stage user-peer)
-      <!!
-      s/sync!
-      <!!
-      atom))
+  (->
+   {:meta
+    {:causal-order {#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957" []},
+     :last-update #inst "2014-04-22T09:52:15.585-00:00",
+     :head "master",
+     :public false,
+     :branches
+     {"master" {:heads #{#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957"}}},
+     :schema {:version 1, :type "http://github.com/ghubber/geschichte"},
+     :pull-requests {},
+     :id #uuid "e9f39d56-2863-4e91-bc8d-c9b4192246f1",
+     :description "user management"},
+    :author "users@polyc0l0r.net",
+    :schema {:version 1, :type "user"},
+    :transactions [],
+    :type :meta-sub,
+    :new-values
+    {#uuid "29e52235-7a62-5960-b5dd-4ad26f3f3957"
+     {:transactions [[#uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb" #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d"]],
+      :parents [],
+      :ts #inst "2014-04-22T09:52:15.585-00:00",
+      :author "users@polyc0l0r.net",
+      :schema {:version 1, :type "user"}},
+     #uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb"
+     {"eve@polyc0l0r.net" {:username "eve@polyc0l0r.net",
+                           :password "$2a$10$uQ9Rw0SrEs6qhbtCr3MklenKQBPuvTab4w6bJvIsUZHNkbNbQ2TWm",
+                           :roles #{:lambda-shelf.core/user}}},
+     #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d" '(fn replace [old params] params)}}
+   (s/wire-stage user-peer)
+   <!!
+   s/sync!
+   <!!
+   atom))
+
+(def user-pub-ch (chan))
+
+(def users (atom nil))
+
+(go
+    (let [[p out] (:chans @user-stage)]
+      (>! user-pub-ch @user-stage) ;; init with stage
+      (sub p :meta-pub user-pub-ch)))
+
+(go-loop [{:keys [meta] :as pm} (<! user-pub-ch)]
+  (when pm
+    (let [new-stage (swap! user-stage update-in [:meta] update meta)]
+      (if (repo/merge-necessary? (:meta new-stage))
+        (<! (s/sync! (swap! user-stage repo/merge)))
+        (let [new-val (<! (s/realize-value @user-stage user-store eval))]
+          (reset! users new-val)
+          (info "new user registry:" new-val))))
+    (recur (<! user-pub-ch))))
 
 
-;; TODO find better way...
-;; geschichte is now setup
+
+
 
 (derive ::admin ::user)
 
@@ -157,6 +175,8 @@
 (defroutes handler
   (resources "/")
 
+  (GET "/impressum" [] (views/impressum))
+
   (GET "/bookmark/ws" [] bookmark-handler) ;; websocket handling
 
   (GET "/geschichte/ws" [] (-> @peer :volatile :handler))
@@ -175,13 +195,14 @@
                                             (dissoc :email)
                                             (update-in [:password] creds/hash-bcrypt)
                                             (assoc :roles #{::user}))}]
-                          (swap! user-stage #(-> %
-                                                 (s/transact
-                                                  new-user
-                                                  'merge)
-                                                 repo/commit
-                                                 s/sync!
-                                                 <!!))
+                          (if (= (:email-check params) (:email params))
+                              (swap! user-stage #(-> %
+                                                     (s/transact
+                                                      new-user
+                                                      'merge)
+                                                     repo/commit
+                                                     s/sync!
+                                                     <!!)))
                           (resp/redirect (str (:context req) "/login"))))
 
   (GET "/logout" req
@@ -204,7 +225,7 @@
         :unauthorized-handler #(-> (enlive/html [:h2 "You do not have sufficient privileges to access " (:uri %)])
                                    resp/response
                                    (resp/status 401))
-        :credential-fn #(creds/bcrypt-credential-fn (<!! (s/realize-value @user-stage user-store eval)) %)
+        :credential-fn #(creds/bcrypt-credential-fn @users %)
         :workflows [(workflows/interactive-form)]})
       site))
 
@@ -219,13 +240,18 @@
   (info (first args))
   (start-server port))
 
+
 ;; --- TESTING ---
 
-#_(def server (start-server 8088))
+
+#_(def server (start-server 8080))
 
 #_(server)
 
+
+
 (comment
+
   (<!! (s/realize-value @user-stage user-store eval))
 
   (pprint (-> @peer :volatile :log deref))
