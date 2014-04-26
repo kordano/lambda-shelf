@@ -104,8 +104,13 @@
 
   ;; pump updates, starting with init value (safe start)
   (let [[p out] (:chans @stage)]
-    (>! pub-ch @stage) ;; init
-    (sub p :meta-pub pub-ch)))
+    (sub p :meta-pub pub-ch)
+    (>! out {:topic :meta-pub-req ;; init with stage
+             :depth 0
+             :user "repo1@shelf.polyc0l0r.net"
+             :repo #uuid "a0c26369-4cad-48ee-8e12-d280b6a26628"
+             :peer "STAGE"
+             :metas {"master" #{}}})))
 
 
 ;; geschichte is setup
@@ -469,24 +474,24 @@
             search (om/get-state owner :search)
             ws-in (om/get-state owner :ws-in)
             ws-out (om/get-state owner :ws-out)]
-        (go-loop [{:keys [meta] :as pm} (<! pub-ch)
-                  slowdown-ch (timeout 0)]
+        (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
           (when pm
-            (<! slowdown-ch)
             (let [new-stage (swap! stage update-in [:meta] update meta)]
-              ;;     (println "UPDATING STAGE")
               (if (repo/merge-necessary? (:meta new-stage))
-                (<! (s/sync! (swap! stage repo/merge)))
+                (go
+                  (<! (timeout (* (rand-int 10) 1000)))
+                  (when (.info js/console "MERGING" (pr-str (:meta @stage)))
+                    (repo/merge-necessary? (:meta @stage))
+                    (<! (s/sync! (swap! stage repo/merge)))))
                 (let [nval (-> new-stage
                                (s/realize-value store update-fns)
                                <!
                                sort-and-join)]
-                  ;;          (println "NEW-VALUE:" nval)
                   (om/transact!
                    app
                    :bookmarks
                    (fn [_] nval)))))
-            (recur (<! pub-ch) (timeout 300))))
+            (recur (<! pub-ch))))
         (go
           (let [connection (<! (connect! (str (if ssl? "wss://" "ws://")
                                               (.getDomain uri)
@@ -499,21 +504,25 @@
           (loop []
             (let [[v c] (alts! [fetch search])] ;; todo split in separate loops
               (condp = c
-                search (do
-                         (om/transact!
-                          app
-                          :bookmarks
-                          (fn [xs]
-                            (vec
-                             (sort-by :date >
-                                      (remove
-                                       #(and (if (nil? (% :title))
-                                               true
-                                               (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
-                                             (if (nil? (% :url))
-                                               true
-                                               (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
-                                       xs)))))
+                search (go
+                         (let [val (-> @stage
+                                       (s/realize-value store update-fns)
+                                       <!
+                                       sort-and-join)]
+                           (om/transact!
+                            app
+                            :bookmarks
+                            (fn [_]
+                              (vec
+                               (sort-by :date >
+                                        (remove
+                                         #(and (if (nil? (% :title))
+                                                 true
+                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
+                                               (if (nil? (% :url))
+                                                 true
+                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
+                                         val))))))
                          (om/set-state! owner :page 0))
 
                 fetch (fetch-url-title app owner v))
@@ -599,14 +608,8 @@
             {:type "search"
              :value (:search input-text)
              :placeholder "Search..."
-             :on-change #(handle-text-change % owner state :search)
-             :onKeyPress #(when (== (.-keyCode %) 13)
-                            (if (not (blank? (:search input-text)))
-                              (go
-                                (>! search (:search input-text)))
-                              (go nil
-                                  ;; TODO rerealize stage value
-                                  )))}]]]]
+             :on-change #(do (handle-text-change % owner state :search)
+                             (put! search (.. % -target -value)))}]]]]
 
         ;; bookmark list
         [:div.table-responsive
