@@ -24,9 +24,9 @@
             [com.ashafa.clutch :refer [couch]]
             [clojure.tools.logging :refer [info warn error]]))
 
+
 (def behind-proxy? (or (System/getenv "SHELF_IS_BEHIND_PROXY")
                        false))
-
 
 (def proto (or (System/getenv "SHELF_PROTO")
                "http"))
@@ -77,7 +77,6 @@
       {"eve@polyc0l0r.net"
        {:username "eve@polyc0l0r.net"
         :password "$2a$10$FHlpFYfbz5hj8/4mC5mMQOge5Nu3oAOZ3mhfUn/PTlLfj2inwlKwa"
-
         :roles #{::user}}}))
 
 
@@ -122,7 +121,7 @@
 
 (go
     (let [[p out] (:chans @user-stage)]
-      (>! user-pub-ch @user-stage) ;; init with stage
+      (>! user-pub-ch @user-stage)
       (sub p :meta-pub user-pub-ch)))
 
 (go-loop [{:keys [meta] :as pm} (<! user-pub-ch)]
@@ -135,11 +134,19 @@
           (info "new user registry:" new-val))))
     (recur (<! user-pub-ch))))
 
-
-
-
+(go
+    (let [[p out] (:chans @user-stage)]
+      (sub p :meta-pub user-pub-ch)
+      (>! out {:topic :meta-pub-req ;; init with stage
+               :depth 0
+               :user "users@polyc0l0r.net"
+               :repo #uuid "e9f39d56-2863-4e91-bc8d-c9b4192246f1"
+               :peer "STAGE"
+               :metas {"master" #{}}})))
 
 (derive ::admin ::user)
+
+;; Websocket requests
 
 (defn fetch-url [url]
   (enlive/html-resource (java.net.URL. url)))
@@ -158,6 +165,7 @@
   (case topic
     :greeting {:data "Greetings Master!" :topic :greeting}
     :fetch-title {:title (fetch-url-title (:url data))}
+    :get-all-users (into #{} (keys @users))
     "DEFAULT"))
 
 
@@ -190,25 +198,23 @@
   (POST "/register" req (let [params (:params req)
                               new-user {(:email params)
                                         (-> params
-                                            (dissoc :email-check)
                                             (assoc :username (:email params))
                                             (dissoc :email)
                                             (update-in [:password] creds/hash-bcrypt)
                                             (assoc :roles #{::user}))}]
-                          (if (= (:email-check params) (:email params))
-                              (swap! user-stage #(-> %
-                                                     (s/transact
-                                                      new-user
-                                                      'merge)
-                                                     repo/commit
-                                                     s/sync!
-                                                     <!!)))
+                          (swap! user-stage #(-> %
+                                                 (s/transact
+                                                  new-user
+                                                  'merge)
+                                                 repo/commit
+                                                 s/sync!
+                                                 <!!))
                           (resp/redirect (str (:context req) "/login"))))
 
   (GET "/logout" req
        (friend/logout* (resp/redirect (str (:context req) "/login"))))
 
-  (GET "/*" req (friend/authorize #{::user} (views/page req))))
+  (GET "/*" req (friend/authorize #{::user} (views/page req (keys @users)))))
 
 
 ;; TODO secure geschichte on user-repo basis
@@ -249,10 +255,11 @@
 #_(server)
 
 
-
 (comment
 
   (<!! (s/realize-value @user-stage user-store eval))
+
+  (keys @users)
 
   (pprint (-> @peer :volatile :log deref))
 

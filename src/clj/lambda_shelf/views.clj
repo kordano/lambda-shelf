@@ -25,7 +25,7 @@
 
 (deftemplate page
   (io/resource "public/index.html")
-  [req]
+  [req users]
   [:head]
   (append
    (html
@@ -68,7 +68,12 @@
     [:div#quotes.container
      [:div.well.well-sm
       (quotes/random-quote)]]
-    [:div#main.container]
+    [:div.row
+     [:div#main.container.col-md-8.col-md-offset-2]
+     [:div.col-md-1.col-md-offset-1
+      [:ul.list-group
+       (map #(vec [:li.list-group-item.user-list-item
+                   [:p %]]) (remove #{(-> req friend/identity :current)}  users))]]]
     [:div#site-footer.container
      [:p.text-center [:a {:href "impressum" :target "_blank"} "Impressum"]]]
     [:script {:src (if static-path
@@ -102,24 +107,11 @@
 
           [:div.form-group
            [:input.form-control
-            {:type "text"
-             :name "firstname"
-             :autocomplete "off"
-             :placeholder "First Name"}]]
-
-          [:div.form-group
-           [:input.form-control
-            {:type "text"
-             :name "lastname"
-             :autocomplete "off"
-             :placeholder "Last Name"}]]
-
-          [:div.form-group
-           [:input.form-control
             {:type "email"
              :name "email"
              :autocomplete "off"
              :placeholder "e-mail"}]]
+
 
           [:div.form-group
            [:input.form-control

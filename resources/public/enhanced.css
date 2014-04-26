@@ -34,3 +34,7 @@
     border-bottom-width: thin;
     border-bottom-color: black;
 }
+
+.user-list-item {
+    font-size: 0.9em;
+}
