@@ -453,23 +453,23 @@
 
 (defn update-stage [app]
   (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
-          (when pm
-            (let [new-stage (swap! stage update-in [:meta] update meta)]
-              (if (repo/merge-necessary? (:meta new-stage))
-                (go
-                  (<! (timeout (* (rand-int 10) 1000)))
-                  (when (.info js/console "MERGING" (pr-str (:meta @stage)))
-                    (repo/merge-necessary? (:meta @stage))
-                    (<! (s/sync! (swap! stage repo/merge)))))
-                (let [nval (-> new-stage
-                               (s/realize-value store update-fns)
-                               <!
-                               sort-and-join)]
-                  (om/transact!
-                   app
-                   :bookmarks
-                   (fn [_] nval)))))
-            (recur (<! pub-ch)))))
+    (when pm
+      (let [new-stage (swap! stage update-in [:meta] update meta)]
+        (if (repo/merge-necessary? (:meta new-stage))
+          (go
+            (<! (timeout (* (rand-int 10) 1000)))
+            (when (repo/merge-necessary? (:meta @stage))
+              (.info js/console "MERGING" (pr-str (:meta @stage)))
+              (<! (s/sync! (swap! stage repo/merge)))))
+          (let [nval (-> new-stage
+                         (s/realize-value store update-fns)
+                         <!
+                         sort-and-join)]
+            (om/transact!
+             app
+             :bookmarks
+             (fn [_] nval)))))
+      (recur (<! pub-ch)))))
 
 (defn connect-services [owner]
   (go
