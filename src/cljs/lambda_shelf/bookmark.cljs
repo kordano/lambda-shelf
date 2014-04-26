@@ -126,7 +126,7 @@
   (go
     (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "URL missing")
-    (<! (timeout 1300))
+    (<! (timeout 5000))
     (.remove (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
 
@@ -137,7 +137,7 @@
   (go
     (.add (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Wrong protocol, http:// or https:// required at beginning of URL.")
-    (<! (timeout 1800))
+    (<! (timeout 5000))
     (.remove (.-classList (om/get-node owner "new-url-form")) "has-error")
     (set! (.-innerHTML (om/get-node owner "new-url-label")) "Website")))
 
@@ -451,6 +451,67 @@
                                             old new))
                               (:links new)))})
 
+(defn update-stage [app]
+  (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
+          (when pm
+            (let [new-stage (swap! stage update-in [:meta] update meta)]
+              (if (repo/merge-necessary? (:meta new-stage))
+                (go
+                  (<! (timeout (* (rand-int 10) 1000)))
+                  (when (.info js/console "MERGING" (pr-str (:meta @stage)))
+                    (repo/merge-necessary? (:meta @stage))
+                    (<! (s/sync! (swap! stage repo/merge)))))
+                (let [nval (-> new-stage
+                               (s/realize-value store update-fns)
+                               <!
+                               sort-and-join)]
+                  (om/transact!
+                   app
+                   :bookmarks
+                   (fn [_] nval)))))
+            (recur (<! pub-ch)))))
+
+(defn connect-services [owner]
+  (go
+    (let [connection (<! (connect! (str (if ssl? "wss://" "ws://")
+                                        (.getDomain uri)
+                                        ":"
+                                        (.getPort uri)
+                                        "/bookmark/ws")))] ;; for local testing no secure channel
+      (om/set-state! owner :ws-in (:in connection))
+      (om/set-state! owner :ws-out (:out connection)))))
+
+(defn search-value [app search-ch]
+  (go-loop [s (<! search-ch)]
+    (when s
+      (let [val (-> @stage
+                    (s/realize-value store update-fns)
+                    <!
+                    sort-and-join)]
+        (om/transact!
+         app
+         :bookmarks
+         (fn [_]
+           (vec
+            (sort-by :date >
+                     (remove
+                      #(and (if (nil? (% :title))
+                              true
+                              (nil? (.exec (js/RegExp. s) (.toLowerCase (% :title)))))
+                            (if (nil? (% :url))
+                              true
+                              (nil? (.exec (js/RegExp. s) (.toLowerCase (% :url))))))
+                      val))))))
+      (recur (<! search-ch)))
+    (om/set-state! owner :page 0)))
+
+
+(defn fetch-title [app owner fetch-ch]
+  (go-loop [f (<! fetch-ch)]
+    (when f
+      (fetch-url-title app owner f)
+      (recur (<! fetch-ch)))))
+
 
 (defn bookmarks-view
   "Overall view with data table and input fields"
@@ -474,59 +535,10 @@
             search (om/get-state owner :search)
             ws-in (om/get-state owner :ws-in)
             ws-out (om/get-state owner :ws-out)]
-        (go-loop [{:keys [meta] :as pm} (<! pub-ch)]
-          (when pm
-            (let [new-stage (swap! stage update-in [:meta] update meta)]
-              (if (repo/merge-necessary? (:meta new-stage))
-                (go
-                  (<! (timeout (* (rand-int 10) 1000)))
-                  (when (.info js/console "MERGING" (pr-str (:meta @stage)))
-                    (repo/merge-necessary? (:meta @stage))
-                    (<! (s/sync! (swap! stage repo/merge)))))
-                (let [nval (-> new-stage
-                               (s/realize-value store update-fns)
-                               <!
-                               sort-and-join)]
-                  (om/transact!
-                   app
-                   :bookmarks
-                   (fn [_] nval)))))
-            (recur (<! pub-ch))))
-        (go
-          (let [connection (<! (connect! (str (if ssl? "wss://" "ws://")
-                                              (.getDomain uri)
-                                              ":"
-                                              (.getPort uri)
-                                              "/bookmark/ws")))] ;; for local testing no secure channel
-            (om/set-state! owner :ws-in (:in connection))
-            (om/set-state! owner :ws-out (:out connection))))
-        (go
-          (loop []
-            (let [[v c] (alts! [fetch search])] ;; todo split in separate loops
-              (condp = c
-                search (go
-                         (let [val (-> @stage
-                                       (s/realize-value store update-fns)
-                                       <!
-                                       sort-and-join)]
-                           (om/transact!
-                            app
-                            :bookmarks
-                            (fn [_]
-                              (vec
-                               (sort-by :date >
-                                        (remove
-                                         #(and (if (nil? (% :title))
-                                                 true
-                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :title)))))
-                                               (if (nil? (% :url))
-                                                 true
-                                                 (nil? (.exec (js/RegExp. v) (.toLowerCase (% :url))))))
-                                         val))))))
-                         (om/set-state! owner :page 0))
-
-                fetch (fetch-url-title app owner v))
-              (recur))))))
+        (update-stage app)
+        (connect-services owner)
+        (search-value app search)
+        (fetch-title app owner fetch)))
 
 
     om/IRenderState
