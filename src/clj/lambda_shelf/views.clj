@@ -23,6 +23,21 @@
 
 (def static-path (some-> (System/getenv "SHELF_STATIC_PATH") read-string))
 
+
+(defn user-list [current-user users]
+  (list
+   [:h4 "The Collective"]
+   [:ul.list-group
+    (map
+     #(vec [:li.list-group-item.user-list-item
+            [:p [:a {:data-toggle "modal"
+                     :data-target "#user-detail"
+                     :title "Add friend"}
+                 [:span.glyphicon.glyphicon-user]]
+             %]])
+     (remove #{current-user} users))]))
+
+
 (deftemplate page
   (io/resource "public/index.html")
   [req users]
@@ -40,7 +55,7 @@
             :alt "Fork me on GitHub"
             :data-canonical-src "https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"}]]
     [:div.navbar.navbar-default {:role "navigation"}
-     [:div.container
+     [:div.container.col-md-8.col-md-offset-2
       [:div.navbar-header
        [:a.navbar-brand {:href "#"}
         "The Shelf"]]
@@ -48,32 +63,18 @@
        [:p#current-user-text.navbar-text (-> req friend/identity :current)]
        [:ul.nav.navbar-nav.navbar-right
         [:li
-         [:a {:href "#"
-              :data-toggle "tooltip"
-              :data-placement "bottom"
-              :title "Import bookmarks"}
-          [:span.glyphicon.glyphicon-import]]]
-        [:li
-         [:a {:href "/bookmark/export.edn"
-              :data-toggle "tooltip"
-              :data-placement "bottom"
-              :title "Export bookmarks"}
-          [:span.glyphicon.glyphicon-export]]]
-        [:li
          [:a {:href "logout"
               :data-toggle "tooltip"
               :data-placement "bottom"
               :title "Logout"}
           [:span.glyphicon.glyphicon-off]]]]]]]
-    [:div#quotes.container
+    [:div#quotes.container.col-md-8.col-md-offset-2
      [:div.well.well-sm
       (quotes/random-quote)]]
     [:div.row
      [:div#main.container.col-md-8.col-md-offset-2]
      [:div.col-md-1.col-md-offset-1
-      [:ul.list-group
-       (map #(vec [:li.list-group-item.user-list-item
-                   [:p %]]) (remove #{(-> req friend/identity :current)}  users))]]]
+      (user-list (-> req friend/identity :current) users)]]
     [:div#site-footer.container
      [:p.text-center [:a {:href "impressum" :target "_blank"} "Impressum"]]]
     [:script {:src (if static-path

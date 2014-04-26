@@ -77,6 +77,7 @@
       {"eve@polyc0l0r.net"
        {:username "eve@polyc0l0r.net"
         :password "$2a$10$FHlpFYfbz5hj8/4mC5mMQOge5Nu3oAOZ3mhfUn/PTlLfj2inwlKwa"
+        :friends #{}
         :roles #{::user}}}))
 
 
@@ -107,6 +108,7 @@
      #uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb"
      {"eve@polyc0l0r.net" {:username "eve@polyc0l0r.net",
                            :password "$2a$10$uQ9Rw0SrEs6qhbtCr3MklenKQBPuvTab4w6bJvIsUZHNkbNbQ2TWm",
+                           :friends #{},
                            :roles #{:lambda-shelf.core/user}}},
      #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d" '(fn replace [old params] params)}}
    (s/wire-stage user-peer)
@@ -201,6 +203,7 @@
                                             (assoc :username (:email params))
                                             (dissoc :email)
                                             (update-in [:password] creds/hash-bcrypt)
+                                            (assoc :friends #{})
                                             (assoc :roles #{::user}))}]
                           (swap! user-stage #(-> %
                                                  (s/transact
