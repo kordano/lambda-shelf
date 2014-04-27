@@ -5,7 +5,7 @@
             [geschichte.repo :as repo]
             [konserve.store :refer [new-mem-store]]
             [hasch.core :refer [sha-1 hash->str uuid]]
-            [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub]]
+            [cljs.core.async :refer [put! take! chan <! >! alts! timeout close! sub sliding-buffer]]
             [om.core :as om :include-macros true]
             [clojure.string :refer [blank?]]
             [clojure.set :as set]
@@ -157,7 +157,7 @@
       (println "NEW STAGE"
                (-> (swap! stage
                           (fn [old]
-                            (-> old
+                            (-> (if (repo/merge-necessary? old) (repo/merge old) old)
                                 (s/transact {:links ;; parameter data
                                              {new-url
                                               {:url new-url
@@ -209,7 +209,7 @@
         (.add (.-classList comment-field) "traditional")
         (-> (swap! stage
                    (fn [old]
-                     (-> old
+                     (-> (if (repo/merge-necessary? old) (repo/merge old) old)
                          (s/transact {:links
                                       {url {:url url
                                             :comments (if-not (empty? new-comment)
@@ -265,7 +265,7 @@
 (go-loop [url (<! votes-ch)]
   (-> (swap! stage
              (fn [old]
-               (-> old
+               (-> (if (repo/merge-necessary? old) (repo/merge old) old)
                    (s/transact {:links {url {:url url
                                              :votes #{(uuid)} ;; HACK until user is here
                                              :date (js/Date.)}}}
@@ -457,7 +457,7 @@
       (let [new-stage (swap! stage update-in [:meta] update meta)]
         (if (repo/merge-necessary? (:meta new-stage))
           (go
-            (<! (timeout (* (rand-int 10) 1000)))
+            (<! (timeout (rand-int 10000)))
             (when (repo/merge-necessary? (:meta @stage))
               (.info js/console "MERGING" (pr-str (:meta @stage)))
               (<! (s/sync! (swap! stage repo/merge)))))
@@ -481,7 +481,7 @@
       (om/set-state! owner :ws-in (:in connection))
       (om/set-state! owner :ws-out (:out connection)))))
 
-(defn search-value [app search-ch]
+(defn search-value [app owner search-ch]
   (go-loop [s (<! search-ch)]
     (when s
       (let [val (-> @stage
@@ -521,7 +521,7 @@
     (init-state [_]
       {:incoming (chan)
        :fetch (chan)
-       :search (chan)
+       :search (chan (sliding-buffer 1))
        :ws-in (chan)
        :ws-out (chan)
        :input-text {:url "" :title "" :comment "" :modal-comment "" :search ""}
@@ -537,7 +537,7 @@
             ws-out (om/get-state owner :ws-out)]
         (update-stage app)
         (connect-services owner)
-        (search-value app search)
+        (search-value app owner search)
         (fetch-title app owner fetch)))
 
 
