@@ -163,8 +163,9 @@
     :get-all-users (into #{} (keys @users))
     :add-friend (swap! user-stage #(-> %
                                        (s/transact
-                                        {(:current-user data) {:friends #{(:new-friend data)}}}
-                                        'merge)
+                                        data
+                                        '(fn [old new]
+                                           (update-in old [(:current-user new) :friends] (fn [x] (into #{} (conj x (:new-friend new)))))))
                                        repo/commit
                                        s/sync!
                                        <!!))
@@ -255,7 +256,6 @@
 
 
 ;; --- TESTING ---
-
 
 #_(def server (start-server 8080))
 
