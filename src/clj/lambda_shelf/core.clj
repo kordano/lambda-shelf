@@ -196,7 +196,23 @@
 
   (GET "/login" req (views/login))
 
-  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req @users)))
+  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req)))
+
+  (POST "/add-friend" req (let [params (:params req)
+                                data {:current-user (-> req friend/identity :current)
+                                      :new-friend (:username params)}
+                                transaction (go
+                                              (swap! user-stage #(-> %
+                                                                     (s/transact
+                                                                      data
+                                                                      '(fn [old new]
+                                                                         (update-in old [(:current-user new) :friends] (fn [x] (into #{} (conj x (:new-friend new)))))))
+                                                                     repo/commit
+                                                                     s/sync!
+                                                                     <!!))
+                                              (<! (timeout 1000))
+                                              (resp/redirect (str (:context req) "/find-user")))]
+                            (<!! transaction)))
 
   (GET "/registration" req (views/registration))
 
@@ -222,7 +238,7 @@
   (GET "/logout" req
        (friend/logout* (resp/redirect (str (:context req) "/login"))))
 
-  (GET "/*" req (friend/authorize #{::user} (views/page req (keys @users)))))
+  (GET "/*" req (friend/authorize #{::user} (views/page req))))
 
 
 ;; TODO secure geschichte on user-repo basis
@@ -266,7 +282,7 @@
 
   (<!! (s/realize-value @user-stage user-store eval))
 
-  (-> users deref)
+  (:friends (get (-> users deref) "konny@shelf.net"))
 
   (pprint (-> @peer :volatile :log deref))
 

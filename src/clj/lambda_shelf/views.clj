@@ -3,9 +3,9 @@
             [net.cgrand.enlive-html :refer [deftemplate after html append defsnippet]]
             [cemerick.friend :as friend]
             [lambda-shelf.quotes :as quotes]
+            [lambda-shelf.core :refer [users]]
             [clojure.string :refer [blank?]]
             [clojure.java.io :as io]))
-
 
 
 
@@ -91,7 +91,7 @@
 
 (deftemplate page
   (io/resource "public/index.html")
-  [req users]
+  [req]
   [:head]
   (append
    (html
@@ -130,7 +130,7 @@
 
 (deftemplate find-user
   (io/resource "public/index.html")
-  [req users]
+  [req]
   [:body]
   (append
    (html
@@ -141,18 +141,28 @@
       [:form {:method "GET" :action "find-user"}
        [:div.form-group
         [:input.form-control
-         {:tpye "text"
+         {:type "text"
           :name "query"
           :autocomplete "off"
           :placeholder "Search User ..."}]]]]
      (let [query (-> req :params :query)
            current-user (-> req friend/identity :current)
-           user-list (sort (remove #{current-user} (keys users)))]
+           user-list (sort (remove #{current-user} (keys @users)))
+           friends (let [user-data (get @users current-user)]
+                     (if (contains? user-data :friends)
+                       (:friends user-data)
+                       #{}))]
        [:div.table-responsive
         [:table.table.table-striped
          [:tbody#user-table
           (map
-           #(vec [:tr [:td %]])
+           #(vec (if (friends %)
+                   [:tr [:td %] [:td [:span.glyphicon.glyphicon-ok-sign]]]
+                   [:form {:method "POST" :action "add-friend"}
+                    [:tr
+                     [:td [:input {:name "username" :value % :type "hidden"}] %]
+
+                     [:td [:input.btn.btn-primary.btn-xs {:type "submit" :value "Add friend"}]]]]))
            (if (nil? query)
              (take 10 user-list)
              (remove (fn [username] (blank? (re-find (re-pattern query) username))) user-list)))]]])])))
@@ -190,7 +200,7 @@
 
           [:br]
 
-          [:input.btn.btn-primary.btn
+          [:input.btn.btn-primary
            {:type "submit"
             :value "Register"}]]]]]]]
     [:div#site-footer.container
