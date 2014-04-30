@@ -3,7 +3,6 @@
             [net.cgrand.enlive-html :refer [deftemplate after html append defsnippet]]
             [cemerick.friend :as friend]
             [lambda-shelf.quotes :as quotes]
-            [lambda-shelf.core :refer [users]]
             [clojure.string :refer [blank?]]
             [clojure.java.io :as io]))
 
@@ -130,7 +129,7 @@
 
 (deftemplate find-user
   (io/resource "public/index.html")
-  [req]
+  [req users]
   [:body]
   (append
    (html
@@ -147,8 +146,8 @@
           :placeholder "Search User ..."}]]]]
      (let [query (-> req :params :query)
            current-user (-> req friend/identity :current)
-           user-list (sort (remove #{current-user} (keys @users)))
-           friends (let [user-data (get @users current-user)]
+           user-list (sort (remove #{current-user} (keys users)))
+           friends (let [user-data (get users current-user)]
                      (if (contains? user-data :friends)
                        (:friends user-data)
                        #{}))]

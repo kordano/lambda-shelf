@@ -196,7 +196,7 @@
 
   (GET "/login" req (views/login))
 
-  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req)))
+  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req @users)))
 
   (POST "/add-friend" req (let [params (:params req)
                                 data {:current-user (-> req friend/identity :current)
