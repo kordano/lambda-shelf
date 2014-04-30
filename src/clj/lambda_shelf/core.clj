@@ -38,8 +38,6 @@
            (or (System/getenv "SHELF_PORT")
                "8080")))
 
-
-
 ;; supply some store
 
 (def store (<!! #_(new-mem-store)
@@ -77,7 +75,6 @@
       {"eve@polyc0l0r.net"
        {:username "eve@polyc0l0r.net"
         :password "$2a$10$FHlpFYfbz5hj8/4mC5mMQOge5Nu3oAOZ3mhfUn/PTlLfj2inwlKwa"
-        :friends #{}
         :roles #{::user}}}))
 
 
@@ -108,7 +105,6 @@
      #uuid "0d08132c-e1c2-5fb6-9f4b-27693e4b4efb"
      {"eve@polyc0l0r.net" {:username "eve@polyc0l0r.net",
                            :password "$2a$10$uQ9Rw0SrEs6qhbtCr3MklenKQBPuvTab4w6bJvIsUZHNkbNbQ2TWm",
-                           :friends #{},
                            :roles #{:lambda-shelf.core/user}}},
      #uuid "123ed64b-1e25-59fc-8c5b-038636ae6c3d" '(fn replace [old params] params)}}
    (s/wire-stage user-peer)
@@ -123,8 +119,14 @@
 
 (go
     (let [[p out] (:chans @user-stage)]
-      (>! user-pub-ch @user-stage)
-      (sub p :meta-pub user-pub-ch)))
+      (sub p :meta-pub user-pub-ch)
+      (>! out {:topic :meta-pub-req ;; init with stage
+               :depth 0
+               :user "users@polyc0l0r.net"
+               :repo #uuid "e9f39d56-2863-4e91-bc8d-c9b4192246f1"
+               :peer "STAGE"
+               :metas {"master" #{}}})))
+
 
 (go-loop [{:keys [meta] :as pm} (<! user-pub-ch)]
   (when pm
@@ -136,15 +138,6 @@
           (info "new user registry:" new-val))))
     (recur (<! user-pub-ch))))
 
-(go
-    (let [[p out] (:chans @user-stage)]
-      (sub p :meta-pub user-pub-ch)
-      (>! out {:topic :meta-pub-req ;; init with stage
-               :depth 0
-               :user "users@polyc0l0r.net"
-               :repo #uuid "e9f39d56-2863-4e91-bc8d-c9b4192246f1"
-               :peer "STAGE"
-               :metas {"master" #{}}})))
 
 (derive ::admin ::user)
 
@@ -168,6 +161,13 @@
     :greeting {:data "Greetings Master!" :topic :greeting}
     :fetch-title {:title (fetch-url-title (:url data))}
     :get-all-users (into #{} (keys @users))
+    :add-friend (swap! user-stage #(-> %
+                                       (s/transact
+                                        {(:current-user data) {:friends #{(:new-friend data)}}}
+                                        'merge)
+                                       repo/commit
+                                       s/sync!
+                                       <!!))
     "DEFAULT"))
 
 
@@ -195,6 +195,8 @@
 
   (GET "/login" req (views/login))
 
+  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req @users)))
+
   (GET "/registration" req (views/registration))
 
   (POST "/register" req (let [params (:params req)
@@ -203,16 +205,18 @@
                                             (assoc :username (:email params))
                                             (dissoc :email)
                                             (update-in [:password] creds/hash-bcrypt)
-                                            (assoc :friends #{})
                                             (assoc :roles #{::user}))}]
-                          (swap! user-stage #(-> %
-                                                 (s/transact
-                                                  new-user
-                                                  'merge)
-                                                 repo/commit
-                                                 s/sync!
-                                                 <!!))
-                          (resp/redirect (str (:context req) "/login"))))
+                          (if (or (clojure.string/blank? (:email params)) (clojure.string/blank? (:password params)))
+                            (resp/redirect (str (:context req) "/registration"))
+                            (do
+                              (swap! user-stage #(-> %
+                                                     (s/transact
+                                                      new-user
+                                                      'merge)
+                                                     repo/commit
+                                                     s/sync!
+                                                     <!!))
+                              (resp/redirect (str (:context req) "/login"))))))
 
   (GET "/logout" req
        (friend/logout* (resp/redirect (str (:context req) "/login"))))
@@ -262,7 +266,7 @@
 
   (<!! (s/realize-value @user-stage user-store eval))
 
-  (keys @users)
+  (-> users deref)
 
   (pprint (-> @peer :volatile :log deref))
 
@@ -276,6 +280,4 @@
 
   (async/go
     (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
-                                  (async/timeout 1000)])))
-
-  )
+                                  (async/timeout 1000)]))))
