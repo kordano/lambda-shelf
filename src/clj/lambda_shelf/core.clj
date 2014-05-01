@@ -194,26 +194,6 @@
 
   (GET "/users/ws" [] (-> @user-peer :volatile :handler))
 
-  (GET "/login" req (views/login))
-
-  (GET "/find-user" req (friend/authorize #{::user} (views/find-user req @users)))
-
-  (POST "/add-friend" req (let [params (:params req)
-                                data {:current-user (-> req friend/identity :current)
-                                      :new-friend (:username params)}
-                                transaction (go
-                                              (swap! user-stage #(-> %
-                                                                     (s/transact
-                                                                      data
-                                                                      '(fn [old new]
-                                                                         (update-in old [(:current-user new) :friends] (fn [x] (into #{} (conj x (:new-friend new)))))))
-                                                                     repo/commit
-                                                                     s/sync!
-                                                                     <!!))
-                                              (<! (timeout 1000))
-                                              (resp/redirect (str (:context req) "/find-user")))]
-                            (<!! transaction)))
-
   (GET "/registration" req (views/registration))
 
   (POST "/register" req (let [params (:params req)
@@ -234,6 +214,8 @@
                                                      s/sync!
                                                      <!!))
                               (resp/redirect (str (:context req) "/login"))))))
+
+  (GET "/login" req (views/login))
 
   (GET "/logout" req
        (friend/logout* (resp/redirect (str (:context req) "/login"))))
@@ -276,24 +258,3 @@
 #_(def server (start-server 8080))
 
 #_(server)
-
-
-(comment
-
-  (<!! (s/realize-value @user-stage user-store eval))
-
-  (:friends (get (-> users deref) "konny@shelf.net"))
-
-  (pprint (-> @peer :volatile :log deref))
-
-  (swap! peer (fn [old]
-                @(server-peer (create-http-kit-handler! (str "ws://" host "/geschichte/ws"))
-                              store)))
-
-  (pprint (-> store :state deref (get "repo1@shelf.polyc0l0r.net")))
-
-  (keys (-> store :state deref))
-
-  (async/go
-    (println "BUS-IN msg" (alts! [(-> @peer :volatile :chans first)
-                                  (async/timeout 1000)]))))
