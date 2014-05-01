@@ -3,27 +3,10 @@
             [net.cgrand.enlive-html :refer [deftemplate after html append defsnippet]]
             [cemerick.friend :as friend]
             [lambda-shelf.quotes :as quotes]
-            [clojure.string :refer [blank?]]
             [clojure.java.io :as io]))
 
 
-
 (def static-path (some-> (System/getenv "SHELF_STATIC_PATH") read-string))
-
-
-(defn user-list [current-user users]
-  (list
-   [:h4 "The Collective"]
-   [:ul.list-group
-    (map
-     #(vec [:li.list-group-item.user-list-item
-            [:p [:a {:data-toggle "modal"
-                     :data-target "#user-detail"
-                     :title "Add friend"}
-                 [:span.glyphicon.glyphicon-user]]
-             %]])
-     (remove #{current-user} users))]))
-
 
 (defn navbar
   ([]
@@ -49,30 +32,26 @@
            "The Shelf"]]
          [:div.collapse.navbar-collapse
           [:p#current-user-text.navbar-text current-user]
-          [:ul.nav.navbar-nav.navbar-right
-           [:li
-            [:a {:href "/"
-                 :data-toggle "tooltip"
-                 :data-placement "bottom"
-                 :title "Browse bookmarks"}
-             [:span.glyphicon.glyphicon-bookmark]]]
-           [:li
-            [:a {:href "find-user"
-                 :data-toggle "tooltip"
-                 :data-placement "bottom"
-                 :title "Find user"}
-             [:span.glyphicon.glyphicon-user]]]
-           [:li
-            [:a {:href "logout"
-                 :data-toggle "tooltip"
-                 :data-placement "bottom"
-                 :title "Logout"}
-             [:span.glyphicon.glyphicon-off]]]]]]])))
+          [:div#nav-container]]]])))
+
+
+(defn bootstrap-css []
+  (append
+   (html
+    [:link {:rel "stylesheet" :href (if static-path
+                     (str static-path "bootstrap/bootstrap-3.1.1-dist/css/bootstrap.min.css")
+                     "//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css")}]
+    [:link {:rel "stylesheet" :href (if static-path
+                     (str static-path "bootstrap/bootstrap-3.1.1-dist/css/bootstrap-theme.min.css")
+                     "//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css")}]
+    [:link {:rel "shortcut icon" :href "/favicon.ico"}])))
 
 
 (deftemplate impressum
   (io/resource "public/index.html")
   []
+  [:head]
+  (bootstrap-css)
   [:body]
   (append
    (html
@@ -88,13 +67,12 @@
        [:a {:href "mailto:info@lambda-collective.net"} "mail dump"]]]])))
 
 
+
 (deftemplate page
   (io/resource "public/index.html")
   [req]
   [:head]
-  (append
-   (html
-    [:link {:rel "shortcut icon" :href "/favicon.ico"}]))
+  (bootstrap-css)
   [:body]
   (append
    (html
@@ -127,49 +105,11 @@
     [:script (browser-connected-repl-js)])))
 
 
-(deftemplate find-user
-  (io/resource "public/index.html")
-  [req users]
-  [:body]
-  (append
-   (html
-    (navbar req)
-    [:div.container
-     [:h2.page-header "Find a User"]
-     [:div#search-form {:role "form"}
-      [:form {:method "GET" :action "find-user"}
-       [:div.form-group
-        [:input.form-control
-         {:type "text"
-          :name "query"
-          :autocomplete "off"
-          :placeholder "Search User ..."}]]]]
-     (let [query (-> req :params :query)
-           current-user (-> req friend/identity :current)
-           user-list (sort (remove #{current-user} (keys users)))
-           friends (let [user-data (get users current-user)]
-                     (if (contains? user-data :friends)
-                       (:friends user-data)
-                       #{}))]
-       [:div.table-responsive
-        [:table.table.table-striped
-         [:tbody#user-table
-          (map
-           #(vec (if (friends %)
-                   [:tr [:td %] [:td [:span.glyphicon.glyphicon-ok-sign]]]
-                   [:form {:method "POST" :action "add-friend"}
-                    [:tr
-                     [:td [:input {:name "username" :value % :type "hidden"}] %]
-
-                     [:td [:input.btn.btn-primary.btn-xs {:type "submit" :value "Add friend"}]]]]))
-           (if (nil? query)
-             (take 10 user-list)
-             (remove (fn [username] (blank? (re-find (re-pattern query) username))) user-list)))]]])])))
-
-
 (deftemplate registration
   (io/resource "public/index.html")
   []
+  [:head]
+  (bootstrap-css)
   [:body]
   (append
    (html
@@ -209,6 +149,8 @@
 (deftemplate login
   (io/resource "public/index.html")
   []
+  [:head]
+  (bootstrap-css)
   [:body]
   (append
    (html

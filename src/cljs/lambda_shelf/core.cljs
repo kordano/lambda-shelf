@@ -22,6 +22,39 @@
 
 (def app-state (atom {:bookmarks nil}))
 
+
+(defn nav-view
+  "Nav view with navigation buttons and search form"
+  [app owner]
+  (reify
+    om/IRender
+    (render [this]
+      (html
+       [:ul.nav.navbar-nav.navbar-right
+        [:li
+         [:form.navbar-form {:role "form"}
+          [:input.form-control
+           {:type "search"
+            :placeholder "Search it ..."}]]]
+        [:li
+         [:a {:href "#"
+              :data-toggle "tooltip"
+              :data-placement "bottom"
+              :title "Browse bookmarks"}
+          [:span.glyphicon.glyphicon-bookmark]]]
+        [:li
+         [:a {:href "logout"
+              :data-toggle "tooltip"
+              :data-placement "bottom"
+              :title "Logout"}
+          [:span.glyphicon.glyphicon-off]]]]))))
+
+
+(om/root
+ nav-view
+ app-state
+ {:target (. js/document (getElementById "nav-container"))})
+
 (om/root
  bookmarks-view
  app-state
